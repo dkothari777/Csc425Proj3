@@ -14,17 +14,29 @@
 
 void printUsage(FILE *stream);
 int setUpLocalTelnetConnection();
-int setUpSproxyConnection(char *sproxyIPAddress);
+int setUpSproxyConnection(struct sockaddr_in sproxyAddress);
 
 int main(int argc, char *argv[])
 {
 	// Get the IP Address that was passed in.
 	if (argc < 2) {
 		printUsage(stdout);
+		return EXIT_FAILURE;
+	}
+
+	// Set up the server's address information (sproxy).
+	struct sockaddr_in sproxyAddress;
+	memset(&sproxyAddress, 0, sizeof(sproxyAddress));
+	sproxyAddress.sin_family = AF_INET;
+	sproxyAddress.sin_port = htons(6200); // The server listens on port 6200.
+	if (inet_pton(AF_INET, sproxyAddress, &sproxyAddress.sin_addr) < 1) {
+		fprintf(stderr, "Error parsing sproxy IP Address.\n");
+		printUsage(stderr);
+		exit(EXIT_FAILURE);
 	}
 
 	// Set up the sproxy & local telnet connections.
-	int sproxySocketFileDescriptor = setUpSproxyConnection(argv[1]);
+	int sproxySocketFileDescriptor = setUpSproxyConnection(sproxyAddress);
 	int localTelnetSocketFileDescriptor = setUpLocalTelnetConnection();
 
 	// Connect to the server (sproxy).
@@ -40,7 +52,6 @@ int main(int argc, char *argv[])
 void printUsage(FILE *stream)
 {
 	fprintf(stream, "Usage: cproxy <w.x.y.z>\n");
-	exit(EXIT_FAILURE);
 }
 
 int setUpLocalTelnetConnection()
@@ -50,23 +61,11 @@ int setUpLocalTelnetConnection()
 	return 0;
 }
 
-int setUpSproxyConnection(char *sproxyIPAddress)
+int setUpSproxyConnection(struct sockaddr_in sproxyAddress)
 {
-	// Get information about the sproxy server.
-	struct sockaddr_in sproxyAddress;
-	memset(&sproxyAddress, 0, sizeof(sproxyAddress));
-	sproxyAddress.sin_family = AF_INET;
-	if (inet_pton(AF_INET, sproxyIPAddress, &sproxyAddress.sin_addr) < 1) {
-		fprintf(stderr, "Error parsing sproxy IP Address.\n");
-		printUsage(stderr);
-	}
-
-	// The server listens on port 6200.
-	sproxyAddress.sin_port = htons(6200);
-
 	// Create the socket.
 	int sproxySocketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
-	if (sproxyFileDescriptor < 0) {
+	if (sproxySocketFileDescriptor < 0) {
 		fprintf(stderr, "Error opening socket.\n");
 		exit(EXIT_FAILURE);
 	}
