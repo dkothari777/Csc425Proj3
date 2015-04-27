@@ -12,7 +12,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-void printUsage();
+void printUsage(FILE *stream);
 
 int main(int argc, char *argv[])
 {
@@ -20,17 +20,23 @@ int main(int argc, char *argv[])
 
 	// Get the IP Address that was passed in.
 	if (argc < 2) {
-		printUsage();
-		return 1;
+		printUsage(stdout);
+		return EXIT_FAILURE;
 	}
 
-	
+	// Get information about the server.
+	struct sockaddr_in serverAddress;
+	if (inet_pton(AF_INET, argv[1], &serverAddress.sin_addr) < 1) {
+		fprintf(stderr, "Error parsing IP Address");
+		printUsage(stderr);
+		return EXIT_FAILURE;
+	}
 
 	return 0;
 }
 
-void printUsage()
+void printUsage(FILE *stream)
 {
-	printf("Usage: cproxy <w.x.y.z>\n");
+	fprintf(stream, "Usage: cproxy <w.x.y.z>\n");
 }
 
