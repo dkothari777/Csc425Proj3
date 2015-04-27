@@ -16,35 +16,33 @@ void printUsage(FILE *stream);
 
 int main(int argc, char *argv[])
 {
-	// TODO: This is where we start the client.
-
 	// Get the IP Address that was passed in.
 	if (argc < 2) {
 		printUsage(stdout);
 		return EXIT_FAILURE;
 	}
 
-	// Get information about the server.
-	struct sockaddr_in serverAddress;
-	memset(&serverAddress, 0, sizeof(serverAddress));
-	serverAddress.sin_family = AF_INET;
-	if (inet_pton(AF_INET, argv[1], &serverAddress.sin_addr) < 1) {
-		fprintf(stderr, "Error parsing IP Address.\n");
+	// Get information about the sproxy server.
+	struct sockaddr_in sproxyAddress;
+	memset(&sproxyAddress, 0, sizeof(sproxyAddress));
+	sproxyAddress.sin_family = AF_INET;
+	if (inet_pton(AF_INET, argv[1], &sproxyAddress.sin_addr) < 1) {
+		fprintf(stderr, "Error parsing sproxy IP Address.\n");
 		printUsage(stderr);
 		return EXIT_FAILURE;
 	}
 
-	// Set the port # to listen to to 5200.
-	serverAddress.sin_port = htons(5200);
+	// The server listens on port 6200.
+	sproxyAddress.sin_port = htons(6200);
 
 	// Create the socket.
-	int socketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
-	if (socketFileDescriptor < 0) {
+	int sproxySocketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+	if (sproxyFileDescriptor < 0) {
 		fprintf(stderr, "Error opening socket.\n");
 	}
 
 	// Connect to the server.
-	if (connect(socketFileDescriptor, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
+	if (connect(sproxySocketFileDescriptor, (struct sockaddr *) &sproxyAddress, sizeof(sproxyAddress)) < 0) {
 		fprintf(stderr, "Error connecting to server.\n");
 	}
 
