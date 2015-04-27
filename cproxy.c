@@ -4,6 +4,14 @@
 // CSC 425
 // Project 3
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+
 void printUsage();
 
 int main(int argc, char *argv[])
@@ -23,6 +31,6 @@ int main(int argc, char *argv[])
 
 void printUsage()
 {
-	printf("./cproxy [w.x.y.z]\n");
+	printf("Usage: cproxy <w.x.y.z>\n");
 }
 
