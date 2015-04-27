@@ -32,7 +32,7 @@ int setupSproxyServer(){
 
 	struct sockaddr_in sproxyAddr;	
 	// create a stream socket(TCP)
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd <0)
 	{
 		fprintf(stderr, "ERROR opening socket");
@@ -51,7 +51,7 @@ int setupSproxyServer(){
 	sproxyAddr.sin_port = htons(6200);
 
 	//bind socket to an address
-	if(bind(sockfd, (struct sockaddr *), &sproxyAddr, sizeof(sproxyAddr)) < 0)
+	if(bind(sockfd, (struct sockaddr *) &sproxyAddr, sizeof(sproxyAddr)) < 0)
 	{
 		fprintf(stderr, "ERROR on bind");
 		exit(EXIT_FAILURE);	
