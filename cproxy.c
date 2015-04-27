@@ -14,36 +14,20 @@
 
 void printUsage(FILE *stream);
 int setUpLocalTelnetConnection();
-int setUpSproxyConnection();
+int setUpSproxyConnection(char *sproxyIPAddress);
 
 int main(int argc, char *argv[])
 {
 	// Get the IP Address that was passed in.
 	if (argc < 2) {
 		printUsage(stdout);
-		return EXIT_FAILURE;
 	}
 
-	// Get information about the sproxy server.
-	struct sockaddr_in sproxyAddress;
-	memset(&sproxyAddress, 0, sizeof(sproxyAddress));
-	sproxyAddress.sin_family = AF_INET;
-	if (inet_pton(AF_INET, argv[1], &sproxyAddress.sin_addr) < 1) {
-		fprintf(stderr, "Error parsing sproxy IP Address.\n");
-		printUsage(stderr);
-		return EXIT_FAILURE;
-	}
+	// Set up the sproxy & local telnet connections.
+	int sproxySocketFileDescriptor = setUpSproxyConnection(argv[1]);
+	int localTelnetSocketFileDescriptor = setUpLocalTelnetConnection();
 
-	// The server listens on port 6200.
-	sproxyAddress.sin_port = htons(6200);
-
-	// Create the socket.
-	int sproxySocketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
-	if (sproxyFileDescriptor < 0) {
-		fprintf(stderr, "Error opening socket.\n");
-	}
-
-	// Connect to the server.
+	// Connect to the server (sproxy).
 	if (connect(sproxySocketFileDescriptor, (struct sockaddr *) &sproxyAddress, sizeof(sproxyAddress)) < 0) {
 		fprintf(stderr, "Error connecting to server.\n");
 	}
@@ -56,14 +40,36 @@ int main(int argc, char *argv[])
 void printUsage(FILE *stream)
 {
 	fprintf(stream, "Usage: cproxy <w.x.y.z>\n");
+	exit(EXIT_FAILURE);
 }
 
 int setUpLocalTelnetConnection()
 {
+	// TODO: Finish the Telnet connection setup.
+
 	return 0;
 }
 
-int setUpSproxyConnection()
+int setUpSproxyConnection(char *sproxyIPAddress)
 {
-	return 0;
+	// Get information about the sproxy server.
+	struct sockaddr_in sproxyAddress;
+	memset(&sproxyAddress, 0, sizeof(sproxyAddress));
+	sproxyAddress.sin_family = AF_INET;
+	if (inet_pton(AF_INET, sproxyIPAddress, &sproxyAddress.sin_addr) < 1) {
+		fprintf(stderr, "Error parsing sproxy IP Address.\n");
+		printUsage(stderr);
+	}
+
+	// The server listens on port 6200.
+	sproxyAddress.sin_port = htons(6200);
+
+	// Create the socket.
+	int sproxySocketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+	if (sproxyFileDescriptor < 0) {
+		fprintf(stderr, "Error opening socket.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return sproxySocketFileDescriptor;;
 }
