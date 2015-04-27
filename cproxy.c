@@ -51,7 +51,7 @@ int setUpLocalTelnetConnection()
 	memset(&LocalTelnetAddress, 0, sizeof(LocalTelnetAddress)); // 0 out the struct
 	LocalTelnetAddress.sin_family = AF_INET; // Domain is the internet.
 	LocalTelnetAddress.sin_addr.s_addr = INADDR_ANY; 	//any IP address will do
-	LocalTelnetAddress.sin_port = htons(6200); // cproxy listens for telnet on port 5200
+	LocalTelnetAddress.sin_port = htons(5200); // cproxy listens for telnet on port 5200
 
 	int localTelnetSocketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
 	if (localTelnetSocketFileDescriptor < 0) {
