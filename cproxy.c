@@ -27,12 +27,12 @@ int main(int argc, char *argv[])
 	// Get information about the server.
 	struct sockaddr_in serverAddress;
 	if (inet_pton(AF_INET, argv[1], &serverAddress.sin_addr) < 1) {
-		fprintf(stderr, "Error parsing IP Address");
+		fprintf(stderr, "Error parsing IP Address\n");
 		printUsage(stderr);
 		return EXIT_FAILURE;
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 void printUsage(FILE *stream)
