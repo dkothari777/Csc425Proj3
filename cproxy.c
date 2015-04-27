@@ -13,6 +13,8 @@
 #include <unistd.h>
 
 void printUsage(FILE *stream);
+int setUpLocalTelnetConnection();
+int setUpSproxyConnection();
 
 int main(int argc, char *argv[])
 {
@@ -56,3 +58,12 @@ void printUsage(FILE *stream)
 	fprintf(stream, "Usage: cproxy <w.x.y.z>\n");
 }
 
+int setUpLocalTelnetConnection()
+{
+	return 0;
+}
+
+int setUpSproxyConnection()
+{
+	return 0;
+}
