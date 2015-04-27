@@ -26,11 +26,29 @@ int main(int argc, char *argv[])
 
 	// Get information about the server.
 	struct sockaddr_in serverAddress;
+	memset(&serverAddress, 0, sizeof(serverAddress));
+	serverAddress.sin_family = AF_INET;
 	if (inet_pton(AF_INET, argv[1], &serverAddress.sin_addr) < 1) {
-		fprintf(stderr, "Error parsing IP Address\n");
+		fprintf(stderr, "Error parsing IP Address.\n");
 		printUsage(stderr);
 		return EXIT_FAILURE;
 	}
+
+	// Set the port # to listen to to 5200.
+	serverAddress.sin_port = htons(5200);
+
+	// Create the socket.
+	int socketFileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+	if (socketFileDescriptor < 0) {
+		fprintf(stderr, "Error opening socket.\n");
+	}
+
+	// Connect to the server.
+	if (connect(socketFileDescriptor, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
+		fprintf(stderr, "Error connecting to server.\n");
+	}
+
+	// TODO: Receive packets
 
 	return EXIT_SUCCESS;
 }
