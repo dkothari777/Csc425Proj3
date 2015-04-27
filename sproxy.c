@@ -32,7 +32,7 @@ int setupSproxyServer(){
 
 	struct sockaddr_in sproxyAddr;	
 	// create a stream socket(TCP)
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd <0)
 	{
 		fprintf(stderr, "ERROR opening socket");
