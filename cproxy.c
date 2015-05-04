@@ -55,6 +55,20 @@ int main(int argc, char *argv[])
 	uint32_t *serverTelnetBuffer = malloc(sizeof(uint32_t));
 	while (1) {
 		// TODO: Implement select() functionality.
+		
+		// Receive from server telnet daemon.
+		printf("Will receive from server telnet session.\n");
+		bytesReceived = recv(serverTelnetSocketDescriptor, serverTelnetBuffer, sizeof(uint32_t), 0);
+		printf("Did receive from server telnet session.\n\n");
+		if (bytesReceived < 0) {
+			fprintf(stderr, "ERROR on reading from server telnet session.\n");
+			exit(EXIT_FAILURE);
+		} else {
+			// Forward buffer to the local telnet daemon.
+			printf("Will send to local telnet session.\n");
+			send(localTelnetSession, serverTelnetBuffer, sizeof(uint32_t), 0);
+			printf("Did send to local telnet session.\n\n");
+		} 
 
 		// Receive from local telnet session.
 		printf("Will receive from local telnet session.\n");
@@ -68,20 +82,6 @@ int main(int argc, char *argv[])
 			printf("Will send to server telnet session.\n");
 			send(serverTelnetSocketDescriptor, localTelnetBuffer, sizeof(uint32_t), 0);
 			printf("Did send to server telnet session.\n\n");
-		}
-
-		// Receive from server telnet daemon.
-		printf("Will receive from server telnet session.\n");
-		bytesReceived = recv(serverTelnetSocketDescriptor, serverTelnetBuffer, sizeof(uint32_t), 0);
-		printf("Did receive from server telnet session.\n\n");
-		if (bytesReceived < 0) {
-			fprintf(stderr, "ERROR on reading from server telnet session.\n");
-			exit(EXIT_FAILURE);
-		} else {
-			// Forward buffer to the local telnet daemon.
-			printf("Will send to local telnet session.\n");
-			send(localTelnetSession, serverTelnetBuffer, sizeof(uint32_t), 0);
-			printf("Did send to local telnet session.\n\n");
 		}
 	}
 
