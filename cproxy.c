@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
 	
 	// Listen for packets from telnet process on this machine. Set the timeout to 100ms.
 	listen(localTelnetSocketDescriptor, 100);
-	int localTelnetSession = accept(localTelnetSocketDescriptor, (struct sockaddr *) &LocalTelnetAddress, &(sizeof(LocalTelnetAddress)));
+	int localTelnetAddressLen = sizeof(LocalTelnetAddress);
+	int localTelnetSession = accept(localTelnetSocketDescriptor, (struct sockaddr *) &LocalTelnetAddress, &localTelnetAddressLen);
 	// TODO: Receive packets
 	
 	// Continuously check for telnet packets on this machine.
@@ -82,7 +83,7 @@ int setUpLocalTelnetConnection()
 	}
 
 	// Bind socket to an address
-	if (bind(localTelnetSocketDescriptor, (struct sockaddr *) &LocalTelnetAddress, sizeof(localTelnetAddress)) < 0) {
+	if (bind(localTelnetSocketDescriptor, (struct sockaddr *) &LocalTelnetAddress, sizeof(LocalTelnetAddress)) < 0) {
 		fprintf(stderr, "ERROR on bind\n");
 		exit(EXIT_FAILURE);
 	}
