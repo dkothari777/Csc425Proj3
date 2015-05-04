@@ -18,6 +18,7 @@ struct sockaddr_in SproxyAddress;
 void printUsage(FILE *stream);
 int setUpLocalTelnetConnection();
 int setUpSproxyConnection();
+int setUpServerTelnetConnection();
 
 int main(int argc, char *argv[])
 {
@@ -29,14 +30,35 @@ int main(int argc, char *argv[])
 
 	// Set up the local telnet & sproxy connections.
 	int localTelnetSocketDescriptor = setUpLocalTelnetConnection();
-	int sproxySocketDescriptor = setUpSproxyConnection(sproxyAddress);
+	// int sproxySocketDescriptor = setUpSproxyConnection();
 
 	// Connect to the server (sproxy).
-	if (connect(sproxySocketDescriptor, (struct sockaddr *) &sproxyAddress, sizeof(sproxyAddress)) < 0) {
-		fprintf(stderr, "Error connecting to server.\n");
-	}
-
+	// if (connect(sproxySocketDescriptor, (struct sockaddr *) &sproxyAddress, sizeof(sproxyAddress)) < 0) {
+		// fprintf(stderr, "Error connecting to server.\n");
+	// }
+	
+	// Listen for packets from telnet process on this machine. Set the timeout to 100ms.
+	listen(localTelnetSocketDescriptor, 100);
+	int localTelnetSession = accept(localTelnetSocketDescriptor, (struct sockaddr *) &LocalTelnetAddress, &(sizeof(LocalTelnetAddress)));
 	// TODO: Receive packets
+	
+	// Continuously check for telnet packets on this machine.
+	uint32_t *packet = malloc(sizeof(uint32_t));
+	while (1) {
+		if (localTelnetSession < 0) {
+			fprintf(stderr, "ERROR on local telnet session accept\n");
+			exit(EXIT_FAILURE);
+		}
+
+		int bytesReceived = recv(localTelnetSession, packet, sizeof(uint32_t), 0);
+
+		if (bytesReceived < 0) {
+			fprintf(stderr, "ERROR on reading from local telnet session\n");
+			exit(EXIT_FAILURE);
+		} else {
+			printf("Received a packet on local telnet session!\n");
+		}
+	}
 
 	return EXIT_SUCCESS;
 }
@@ -50,7 +72,7 @@ int setUpLocalTelnetConnection()
 {
 	memset(&LocalTelnetAddress, 0, sizeof(LocalTelnetAddress)); // 0 out the struct
 	LocalTelnetAddress.sin_family = AF_INET; // Domain is the internet.
-	LocalTelnetAddress.sin_addr.s_addr = INADDR_ANY; 	// Any IP address will do? Maybe localhost
+	LocalTelnetAddress.sin_addr.s_addr = INADDR_ANY; // Any IP address will do? Maybe localhost
 	LocalTelnetAddress.sin_port = htons(5200); // cproxy listens for telnet on port 5200
 
 	int localTelnetSocketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
@@ -70,9 +92,6 @@ int setUpLocalTelnetConnection()
 
 int setUpSproxyConnection()
 {
-	// TODO: Hardcode IP address fortelnet address on server & port 23
-	// for telnet -> cproxy -> daemon debug process.
-
 	// Set up the server's address information (sproxy).
 	memset(&SproxyAddress, 0, sizeof(SproxyAddress)); // 0 out the struct
 	SproxyAddress.sin_family = AF_INET; // Domain is the internet.
@@ -91,4 +110,11 @@ int setUpSproxyConnection()
 	}
 
 	return sproxySocketDescriptor;;
+}
+
+int setUpServerTelnetConnection()
+{
+	// TODO: Hardcode IP address for telnet address on server & port 23
+	// for telnet -> cproxy -> daemon debug process.
+	
 }
