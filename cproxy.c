@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 		} else {
 			// Forward buffer to the server telnet daemon.
 			printf("Will send to server telnet session.\n");
-			send(serverTelnetSocketDescriptor, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
+			send(serverTelnetSocketDescriptor, localTelnetBuffer, bytesReceived, 0);
 			printf("Did send to server telnet session.\n\n");
 		}
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 		} else {
 			// Forward buffer to the local telnet daemon.
 			printf("Will send to local telnet session.\n");
-			send(localTelnetSession, serverTelnetBuffer, sizeof(serverTelnetBuffer), 0);
+			send(localTelnetSession, serverTelnetBuffer, bytesReceived, 0);
 			printf("Did send to local telnet session.\n\n");
 		} 
 	}
