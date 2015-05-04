@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "ERROR on reading from server telnet session.\n");
 			exit(EXIT_FAILURE);
 		} else {
-			printf("Received a packet on local telnet session!\n");
+			printf("Received a packet on server telnet session!\n");
 
 			// TODO: Forward buffer to the local telnet daemon.
 			send(localTelnetSession, serverTelnetBuffer, sizeof(uint32_t), 0);
