@@ -45,8 +45,8 @@ int main(int argc, char *argv[])
 	int localTelnetAddressLen = sizeof(LocalTelnetAddress);
 	int localTelnetSession = accept(localTelnetSocketDescriptor, (struct sockaddr *) &LocalTelnetAddress, &localTelnetAddressLen);
 	if (localTelnetSession < 0) {
-			fprintf(stderr, "ERROR on local telnet session accept.\n");
-			exit(EXIT_FAILURE);
+		fprintf(stderr, "ERROR on local telnet session accept.\n");
+		exit(EXIT_FAILURE);
 	}
 	
 	// Continuously check for telnet packets on this machine.
