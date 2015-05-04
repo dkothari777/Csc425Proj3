@@ -54,6 +54,8 @@ int main(int argc, char *argv[])
 	uint32_t *localTelnetBuffer = malloc(sizeof(uint32_t));
 	uint32_t *serverTelnetBuffer = malloc(sizeof(uint32_t));
 	while (1) {
+		// TODO: Implement select() functionality.
+
 		// Receive from local telnet session.
 		printf("Will receive from local telnet session.\n");
 		bytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(uint32_t), 0);
