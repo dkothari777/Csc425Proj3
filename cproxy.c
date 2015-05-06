@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -33,6 +34,9 @@ int main(int argc, char *argv[])
 	int localTelnetSocketDescriptor = setUpLocalTelnetConnection();
 	// int sproxySocketDescriptor = setUpSproxyConnection(argv[1]);
 	int serverTelnetSocketDescriptor = setUpServerTelnetConnection();
+
+	printf("Local Telnet Socket Descriptor: %d\n", localTelnetSocketDescriptor);
+	printf("Server Telnet Socket Descriptor: %d\n", serverTelnetSocketDescriptor);
 	
 	// Connect to server telnet daemon.
 	if (connect(serverTelnetSocketDescriptor, (struct sockaddr *) &ServerTelnetAddress, sizeof(ServerTelnetAddress)) < 0) {
@@ -49,41 +53,94 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	
+	// Do the initial preparation for the select() implementation.
+	//
+	// Learned from Beej's Guide to Network Programming.
+	fd_set readFileDescriptorSet, writeFileDescriptorSet;
+	FD_ZERO(&readFileDescriptorSet);
+	FD_ZERO(&writeFileDescriptorSet);
+	FD_SET(localTelnetSocketDescriptor, &readFileDescriptorSet);
+	FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);
+	FD_SET(localTelnetSocketDescriptor, &writeFileDescriptorSet);
+	FD_SET(serverTelnetSocketDescriptor, &writeFileDescriptorSet);
+	int numFDs = serverTelnetSocketDescriptor + 1;
+
+	// Set the timeout to 1.0 seconds.
+	struct timeval timeout;
+	//timeout.tv_sec = 10;
+	//timeout.tv_usec = 0;
+
 	// Continuously check for telnet packets on this machine.
-	int bytesReceived;
+	int localTelnetBytesReceived;
+	int serverTelnetBytesReceived;
 	// uint32_t *localTelnetBuffer = malloc(sizeof(uint32_t));
 	// uint32_t *serverTelnetBuffer = malloc(sizeof(uint32_t));
 	char localTelnetBuffer[4096];
 	char serverTelnetBuffer[4096];
 	while (1) {
-		// TODO: Implement select() functionality.
-		
-		// Receive from server telnet daemon.
-		printf("Will receive from server telnet session.\n");
-		bytesReceived = recv(serverTelnetSocketDescriptor, serverTelnetBuffer, sizeof(serverTelnetBuffer), 0);
-		printf("Did receive from server telnet session.\n\n");
-		if (bytesReceived < 0) {
-			fprintf(stderr, "ERROR on reading from server telnet session.\n");
-			exit(EXIT_FAILURE);
-		} else {
-			// Forward buffer to the local telnet daemon.
-			printf("Will send to local telnet session.\n");
-			send(localTelnetSession, serverTelnetBuffer, bytesReceived, 0);
-			printf("Did send to local telnet session.\n\n");
-		} 
+		// Block the thread until either the local telnet connection or the server telnet
+		// connection, or both, have sent us data.
+		timeout.tv_sec = 10;
+		timeout.tv_usec = 0;
+		int fdsToRead = select(numFDs, &readFileDescriptorSet, &writeFileDescriptorSet, NULL, &timeout);
 
-		// Receive from local telnet session.
-		printf("Will receive from local telnet session.\n");
-		bytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
-		printf("Did receive from local telnet session.\n\n");
-		if (bytesReceived < 0) {
-			fprintf(stderr, "ERROR on reading from local telnet session.\n");
+		// Check for errors in select().
+		if (fdsToRead == -1) {
+			fprintf(stderr, "ERROR in select().\n");
 			exit(EXIT_FAILURE);
-		} else {
-			// Forward buffer to the server telnet daemon.
-			printf("Will send to server telnet session.\n");
-			send(serverTelnetSocketDescriptor, localTelnetBuffer, bytesReceived, 0);
-			printf("Did send to server telnet session.\n\n");
+		}
+
+		// Check if a timeout occured.
+		else if (fdsToRead == 0) {
+			printf("Timeout occurred!\n");
+		
+			// TODO: Implement heartbeat functionality.
+			exit(EXIT_FAILURE);
+		}
+
+		// Otherwise, there is data to be read from the sockets!
+		else {
+			// Receive from server telnet daemon.
+			if (FD_ISSET(serverTelnetSocketDescriptor, &readFileDescriptorSet)) {
+				printf("Will receive from server telnet session.\n");
+				serverTelnetBytesReceived = recv(serverTelnetSocketDescriptor, serverTelnetBuffer, sizeof(serverTelnetBuffer), 0);
+				printf("Did receive from server telnet session.\n\n");
+				if (localTelnetBytesReceived < 0) {
+					fprintf(stderr, "ERROR on reading from server telnet session.\n");
+					exit(EXIT_FAILURE);
+				} else {
+					// Forward buffer to the local telnet daemon.
+					//if (FD_ISSET(localTelnetSocketDescriptor, &writeFileDescriptorSet)) {
+					//	printf("Will send to local telnet session.\n");
+					//	send(localTelnetSession, serverTelnetBuffer, bytesReceived, 0);
+					//	printf("Did send to local telnet session.\n\n");
+					//}
+				}
+			} 
+
+			// Receive from local telnet session.
+			if (FD_ISSET(localTelnetSocketDescriptor, &readFileDescriptorSet)) {
+				printf("Will receive from local telnet session.\n");
+				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
+				printf("Did receive from local telnet session.\n\n");
+				if (localTelnetBytesReceived < 0) {
+					fprintf(stderr, "ERROR on reading from local telnet session.\n");
+					exit(EXIT_FAILURE);
+				} else {
+					// Forward buffer to the server telnet daemon.
+					//if (FD_ISSET(serverTelnetSocketDescriptor, &writeFileDescriptorSet)) {
+					//	printf("Will send to server telnet session.\n");
+					//	send(serverTelnetSocketDescriptor, localTelnetBuffer, bytesReceived, 0);
+					//	printf("Did send to server telnet session.\n\n");
+					//}
+				}
+			}
+
+			if (serverTelnetBytesReceived > 0 && FD_ISSET(localTelnetSocketDescriptor, &writeFileDescriptorSet)) {
+				printf("Will send to local telnet session.\n");
+				send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
+				printf("Did send to local telnet session.\n\n");	
+			}
 		}
 	}
 
@@ -151,7 +208,7 @@ int setUpServerTelnetConnection()
 	ServerTelnetAddress.sin_family = AF_INET; // Domain is the internet.
 	ServerTelnetAddress.sin_port = htons(23); // The server listens on port 6200.
 
-	// Set the IP address
+	// Set the IP address (hardcoded at server vm46's IP address).
 	if (inet_pton(AF_INET, "192.168.8.2", &ServerTelnetAddress.sin_addr) < 1) {
 		fprintf(stderr, "ERROR parsing sproxy IP Address.\n");
 		printUsage(stderr);
