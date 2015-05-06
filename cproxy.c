@@ -79,6 +79,14 @@ int main(int argc, char *argv[])
 	while (1) {
 		// Block the thread until either the local telnet connection or the server telnet
 		// connection, or both, have sent us data.
+        // reinitialize fd sets
+        FD_ZERO(&readFileDescriptorSet);
+        FD_ZERO(&writeFileDescriptorSet);
+        FD_SET(localTelnetSocketDescriptor, &readFileDescriptorSet);
+        FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);
+        FD_SET(localTelnetSocketDescriptor, &writeFileDescriptorSet);
+        FD_SET(serverTelnetSocketDescriptor, &writeFileDescriptorSet);
+
 		timeout.tv_sec = 10;
 		timeout.tv_usec = 0;
 		int fdsToRead = select(numFDs, &readFileDescriptorSet, &writeFileDescriptorSet, NULL, &timeout);
