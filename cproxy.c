@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 				printf("Will receive from server telnet session.\n");
 				serverTelnetBytesReceived = recv(serverTelnetSocketDescriptor, serverTelnetBuffer, sizeof(serverTelnetBuffer), 0);
 				printf("Did receive from server telnet session.\n\n");
-				if (localTelnetBytesReceived < 0) {
+				if (serverTelnetBytesReceived < 0) {
 					fprintf(stderr, "ERROR on reading from server telnet session.\n");
 					exit(EXIT_FAILURE);
 				} else {
@@ -141,6 +141,12 @@ int main(int argc, char *argv[])
 				send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
 				printf("Did send to local telnet session.\n\n");	
 			}
+
+            if(localTelnetBytesReceived > 0 && FD_ISSET(serverTelnetSocketDescriptor, &writeFileDescriptorSet)) {
+                printf("Will sent to local telnet session.\n");
+                send(serverTelnetSocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
+                printf("Did send to local telnet session. \n\n");
+            }
 		}
 	}
 
