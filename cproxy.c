@@ -12,10 +12,13 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
+#define MAX(a,b) (a > b) ? a : b
+
 struct sockaddr_in LocalTelnetAddress;
 struct sockaddr_in SproxyAddress;
 struct sockaddr_in ServerTelnetAddress;
 
+//METHODS IMPLEMENTED
 void printUsage(FILE *stream);
 int setUpLocalTelnetConnection();
 int setUpSproxyConnection(char *ipAddress);
@@ -33,9 +36,6 @@ int main(int argc, char *argv[])
 	int localTelnetSocketDescriptor = setUpLocalTelnetConnection();
 	// int sproxySocketDescriptor = setUpSproxyConnection(argv[1]);
 	int serverTelnetSocketDescriptor = setUpServerTelnetConnection();
-
-	printf("Local Telnet Socket Descriptor: %d\n", localTelnetSocketDescriptor);
-	printf("Server Telnet Socket Descriptor: %d\n", serverTelnetSocketDescriptor);
 	
 	// Connect to server telnet daemon.
 	if (connect(serverTelnetSocketDescriptor, (struct sockaddr *) &ServerTelnetAddress, sizeof(ServerTelnetAddress)) < 0) {
@@ -51,45 +51,28 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "ERROR on local telnet session accept.\n");
 		exit(EXIT_FAILURE);
 	}
-	
 	// Do the initial preparation for the select() implementation.
 	//
 	// Learned from Beej's Guide to Network Programming.
-	fd_set readFileDescriptorSet, writeFileDescriptorSet;
-	FD_ZERO(&readFileDescriptorSet);
-	FD_ZERO(&writeFileDescriptorSet);
-	FD_SET(localTelnetSocketDescriptor, &readFileDescriptorSet);
-	FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);
-	FD_SET(localTelnetSocketDescriptor, &writeFileDescriptorSet);
-	FD_SET(serverTelnetSocketDescriptor, &writeFileDescriptorSet);
-	int numFDs = serverTelnetSocketDescriptor + 1;
-
-	// Set the timeout to 1.0 seconds.
+	fd_set readFileDescriptorSet;
 	struct timeval timeout;
-	//timeout.tv_sec = 10;
-	//timeout.tv_usec = 0;
 
 	// Continuously check for telnet packets on this machine.
 	int localTelnetBytesReceived;
 	int serverTelnetBytesReceived;
-	// uint32_t *localTelnetBuffer = malloc(sizeof(uint32_t));
-	// uint32_t *serverTelnetBuffer = malloc(sizeof(uint32_t));
 	char localTelnetBuffer[4096];
 	char serverTelnetBuffer[4096];
 	while (1) {
 		// Block the thread until either the local telnet connection or the server telnet
 		// connection, or both, have sent us data.
-        // reinitialize fd sets
         FD_ZERO(&readFileDescriptorSet);
-        FD_ZERO(&writeFileDescriptorSet);
-        FD_SET(localTelnetSocketDescriptor, &readFileDescriptorSet);
+        FD_SET(localTelnetSession, &readFileDescriptorSet);
         FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);
-        FD_SET(localTelnetSocketDescriptor, &writeFileDescriptorSet);
-        FD_SET(serverTelnetSocketDescriptor, &writeFileDescriptorSet);
 
-		timeout.tv_sec = 10;
+        timeout.tv_sec = 10;
 		timeout.tv_usec = 0;
-		int fdsToRead = select(numFDs, &readFileDescriptorSet, &writeFileDescriptorSet, NULL, &timeout);
+		int maxFD = MAX(localTelnetSession, serverTelnetSocketDescriptor);
+		int fdsToRead = select(maxFD, &readFileDescriptorSet, NULL, NULL, &timeout);
 
 		// Check for errors in select().
 		if (fdsToRead == -1) {
@@ -100,41 +83,44 @@ int main(int argc, char *argv[])
 		// Check if a timeout occured.
 		else if (fdsToRead == 0) {
 			printf("Timeout occurred!\n");
-
 			// TODO: Implement heartbeat functionality.
 			exit(EXIT_FAILURE);
 		}
 
 		// Otherwise, there is data to be read from the sockets!
 		else {
+			// Receive from local telnet session.
+			if (FD_ISSET(localTelnetSession, &readFileDescriptorSet)) {
+				printf("Will receive from local telnet session.\n");
+                memset(localTelnetBuffer, 0, sizeof(localTelnetBuffer));
+				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
+				printf("Did receive from local telnet session.\n\n");
+				// Forward the packet to the server telnet session.
+                if (localTelnetBytesReceived >= 0) {
+                    printf("Will send to server telnet session.\n");
+					int sent = send(serverTelnetSocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
+                    localTelnetBytesReceived = 0;
+					printf("Did send to server telnet session: %d.\n", sent);
+                }
+			}
+
 			// Receive from server telnet daemon.
 			if (FD_ISSET(serverTelnetSocketDescriptor, &readFileDescriptorSet)) {
 				printf("Will receive from server telnet session.\n");
+                memset(serverTelnetBuffer, 0, sizeof(serverTelnetBuffer));
 				serverTelnetBytesReceived = recv(serverTelnetSocketDescriptor, serverTelnetBuffer, sizeof(serverTelnetBuffer), 0);
 				printf("Did receive from server telnet session.\n\n");
-			}
-			// Receive from local telnet session.
-			if (FD_ISSET(localTelnetSocketDescriptor, &readFileDescriptorSet)) {
-				printf("Will receive from local telnet session.\n");
-				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
-				printf("Did receive from local telnet session.\n\n");
-			}
-
-			if (serverTelnetBytesReceived > 0 && FD_ISSET(localTelnetSocketDescriptor, &writeFileDescriptorSet)) {
-				printf("Will send to local telnet session.\n");
-				send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
-				printf("Did send to local telnet session.\n\n");
-                serverTelnetBytesReceived = 0;
-			}
-
-            if(localTelnetBytesReceived > 0 && FD_ISSET(serverTelnetSocketDescriptor, &writeFileDescriptorSet)) {
-                printf("Will sent to local telnet session.\n");
-                send(serverTelnetSocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
-                printf("Did send to local telnet session. \n\n");
-                localTelnetBytesReceived = 0;
+                
+				// Forward the packet to the local telnet session.
+				if (serverTelnetBytesReceived >= 0){
+					printf("Will send to local telnet session.\n");
+                    int sent = send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
+                    serverTelnetBytesReceived = 0;
+					printf("Did send to local telnet session: %d.\n", sent);
+                }
             }
 		}
-	}
+    }
 
 	return EXIT_SUCCESS;
 }
