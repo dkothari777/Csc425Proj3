@@ -53,17 +53,13 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "ERROR on local telnet session accept.\n");
 		exit(EXIT_FAILURE);
 	}
-	
 	// Do the initial preparation for the select() implementation.
 	//
 	// Learned from Beej's Guide to Network Programming.
 	fd_set readFileDescriptorSet, writeFileDescriptorSet;
 	FD_ZERO(&readFileDescriptorSet);
-	FD_ZERO(&writeFileDescriptorSet);
 	FD_SET(localTelnetSocketDescriptor, &readFileDescriptorSet);
 	FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);
-	FD_SET(localTelnetSocketDescriptor, &writeFileDescriptorSet);
-	FD_SET(serverTelnetSocketDescriptor, &writeFileDescriptorSet);
 	int numFDs = serverTelnetSocketDescriptor + 1;
 
 	// Set the timeout to 1.0 seconds.
@@ -81,9 +77,13 @@ int main(int argc, char *argv[])
 	while (1) {
 		// Block the thread until either the local telnet connection or the server telnet
 		// connection, or both, have sent us data.
-		timeout.tv_sec = 10;
+        FD_ZERO(&readFileDescriptorSet);
+        FD_SET(localTelnetSession, &readFileDescriptorSet);
+        FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);
+
+        timeout.tv_sec = 10;
 		timeout.tv_usec = 0;
-		int fdsToRead = select(numFDs, &readFileDescriptorSet, &writeFileDescriptorSet, NULL, &timeout);
+		int fdsToRead = select(numFDs, &readFileDescriptorSet, NULL, NULL, &timeout);
 
 		// Check for errors in select().
 		if (fdsToRead == -1) {
@@ -94,7 +94,6 @@ int main(int argc, char *argv[])
 		// Check if a timeout occured.
 		else if (fdsToRead == 0) {
 			printf("Timeout occurred!\n");
-		
 			// TODO: Implement heartbeat functionality.
 			exit(EXIT_FAILURE);
 		}
@@ -104,30 +103,29 @@ int main(int argc, char *argv[])
 			// Receive from server telnet daemon.
 			if (FD_ISSET(serverTelnetSocketDescriptor, &readFileDescriptorSet)) {
 				printf("Will receive from server telnet session.\n");
+                memset(serverTelnetBuffer, 0, sizeof(serverTelnetBuffer));
 				serverTelnetBytesReceived = recv(serverTelnetSocketDescriptor, serverTelnetBuffer, sizeof(serverTelnetBuffer), 0);
 				printf("Did receive from server telnet session.\n\n");
+                if(serverTelnetBytesReceived > 0){
+                    send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
+                    serverTelnetBytesReceived = 0;
+                }
             }
                 // Receive from local telnet session.
-			if (FD_ISSET(localTelnetSocketDescriptor, &readFileDescriptorSet)) {
+			if (FD_ISSET(localTelnetSession, &readFileDescriptorSet)) {
 				printf("Will receive from local telnet session.\n");
+                memset(localTelnetBuffer, 0, sizeof(localTelenetBuffer));
 				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
 				printf("Did receive from local telnet session.\n\n");
+                if(serverTelnetBytesReceived > 0) {
+                    send(serverTelnetSession, localTelnetBuffer, localTelnetBytesReceived, 0);
+                    localTelnetBytesReceived = 0;
+                }
+
 			}
 
-			if (serverTelnetBytesReceived > 0 && FD_ISSET(localTelnetSocketDescriptor, &writeFileDescriptorSet)) {
-				printf("Will send to local telnet session.\n");
-				send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
-				printf("Did send to local telnet session.\n\n");
-			}
-
-            if(localTelnetBytesReceived > 0 && FD_ISSET(serverTelnetSocketDescriptor, &writeFileDescriptorSet)) {
-                printf("Will sent to local telnet session.\n");
-                send(serverTelnetSocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
-                printf("Did send to local telnet session. \n\n");
-            }
 		}
-	}
-
+    }
 	return EXIT_SUCCESS;
 }
 
