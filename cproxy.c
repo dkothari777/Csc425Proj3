@@ -136,9 +136,9 @@ void printUsage(FILE *stream)
 int setUpLocalTelnetConnection()
 {
 	memset(&LocalTelnetAddress, 0, sizeof(LocalTelnetAddress)); // 0 out the struct
-	LocalTelnetAddress.sin_family = AF_INET; // Domain is the internet.
-    LocalTelnetAddress.sin_addr.s_addr = INADDR_ANY; // Any IP address will do? Maybe localhost
-	LocalTelnetAddress.sin_port = htons(5200); // cproxy listens for telnet on port 5200
+    LocalTelnetAddress.sin_family = AF_INET;                    // Domain is the internet.
+    LocalTelnetAddress.sin_addr.s_addr = INADDR_ANY;            // Any IP address will do? Maybe localhost
+    LocalTelnetAddress.sin_port = htons(5200);                  // cproxy listens for telnet on port 5200
 
 	int localTelnetSocketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
 	if (localTelnetSocketDescriptor < 0) {
