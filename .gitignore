@@ -39,5 +39,5 @@ sproxy
 *.un~
 
 # Currently opened files.
-*.scp
+*.swp
 
