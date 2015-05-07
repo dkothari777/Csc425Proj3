@@ -12,8 +12,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-#define MAX(a,b) (a > b) ? a : b
-
 struct sockaddr_in LocalTelnetAddress;
 struct sockaddr_in SproxyAddress;
 struct sockaddr_in ServerTelnetAddress;
@@ -36,21 +34,23 @@ int main(int argc, char *argv[])
 	int localTelnetSocketDescriptor = setUpLocalTelnetConnection();
 	// int sproxySocketDescriptor = setUpSproxyConnection(argv[1]);
 	int serverTelnetSocketDescriptor = setUpServerTelnetConnection();
-	
-	// Connect to server telnet daemon.
-	if (connect(serverTelnetSocketDescriptor, (struct sockaddr *) &ServerTelnetAddress, sizeof(ServerTelnetAddress)) < 0) {
-		fprintf(stderr, "ERROR connecting to server telnet daemon.\n");
-		exit(EXIT_FAILURE);
-	}
-	
+		
 	// Listen for packets from telnet process on this machine. Set the timeout to 100ms.
+    // Also, accept the connection request from the local telnet process on this machine.
 	listen(localTelnetSocketDescriptor, 100);
-	int localTelnetAddressLen = sizeof(LocalTelnetAddress);
+    int localTelnetAddressLen = sizeof(LocalTelnetAddress);
 	int localTelnetSession = accept(localTelnetSocketDescriptor, (struct sockaddr *) &LocalTelnetAddress, &localTelnetAddressLen);
 	if (localTelnetSession < 0) {
 		fprintf(stderr, "ERROR on local telnet session accept.\n");
 		exit(EXIT_FAILURE);
 	}
+
+	// Connect to server telnet daemon.
+	if (connect(serverTelnetSocketDescriptor, (struct sockaddr *) &ServerTelnetAddress, sizeof(ServerTelnetAddress)) < 0) {
+		fprintf(stderr, "ERROR connecting to server telnet daemon.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	// Do the initial preparation for the select() implementation.
 	//
 	// Learned from Beej's Guide to Network Programming.
@@ -62,17 +62,19 @@ int main(int argc, char *argv[])
 	int serverTelnetBytesReceived;
 	char localTelnetBuffer[4096];
 	char serverTelnetBuffer[4096];
+    int fdsToRead;
+
 	while (1) {
 		// Block the thread until either the local telnet connection or the server telnet
 		// connection, or both, have sent us data.
         FD_ZERO(&readFileDescriptorSet);
-        FD_SET(localTelnetSession, &readFileDescriptorSet);
-        FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);
+        FD_SET(localTelnetSession, &readFileDescriptorSet);             // Value returned from accept() above in main().
+        FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);   // Value returned from socket() in setUpServerTelnetConnection().
 
-        timeout.tv_sec = 10;
+        timeout.tv_sec = 1;
 		timeout.tv_usec = 0;
-		int maxFD = MAX(localTelnetSession, serverTelnetSocketDescriptor);
-		int fdsToRead = select(maxFD, &readFileDescriptorSet, NULL, NULL, &timeout);
+		int maxFD = (localTelnetSession > serverTelnetSocketDescriptor ? localTelnetSession : serverTelnetSocketDescriptor);
+		fdsToRead = select(maxFD+1, &readFileDescriptorSet, NULL, NULL, &timeout);
 
 		// Check for errors in select().
 		if (fdsToRead == -1) {
@@ -94,10 +96,11 @@ int main(int argc, char *argv[])
 				printf("Will receive from local telnet session.\n");
                 memset(localTelnetBuffer, 0, sizeof(localTelnetBuffer));
 				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
-				printf("Did receive from local telnet session.\n\n");
-				// Forward the packet to the server telnet session.
+				printf("Did receive from local telnet session: %d\n\n", localTelnetBytesReceived);
+				
+                // Forward the packet to the server telnet session.
                 if (localTelnetBytesReceived >= 0) {
-                    printf("Will send to server telnet session.\n");
+                    printf("Will send to server telnet session: %d.\n", localTelnetBytesReceived);
 					int sent = send(serverTelnetSocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
                     localTelnetBytesReceived = 0;
 					printf("Did send to server telnet session: %d.\n", sent);
@@ -109,11 +112,11 @@ int main(int argc, char *argv[])
 				printf("Will receive from server telnet session.\n");
                 memset(serverTelnetBuffer, 0, sizeof(serverTelnetBuffer));
 				serverTelnetBytesReceived = recv(serverTelnetSocketDescriptor, serverTelnetBuffer, sizeof(serverTelnetBuffer), 0);
-				printf("Did receive from server telnet session.\n\n");
+				printf("Did receive from server telnet session: %d.\n\n", serverTelnetBytesReceived);
                 
 				// Forward the packet to the local telnet session.
 				if (serverTelnetBytesReceived >= 0){
-					printf("Will send to local telnet session.\n");
+					printf("Will send to local telnet session: %d.\n", serverTelnetBytesReceived);
                     int sent = send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
                     serverTelnetBytesReceived = 0;
 					printf("Did send to local telnet session: %d.\n", sent);
@@ -134,7 +137,7 @@ int setUpLocalTelnetConnection()
 {
 	memset(&LocalTelnetAddress, 0, sizeof(LocalTelnetAddress)); // 0 out the struct
 	LocalTelnetAddress.sin_family = AF_INET; // Domain is the internet.
-	LocalTelnetAddress.sin_addr.s_addr = INADDR_ANY; // Any IP address will do? Maybe localhost
+    LocalTelnetAddress.sin_addr.s_addr = INADDR_ANY; // Any IP address will do? Maybe localhost
 	LocalTelnetAddress.sin_port = htons(5200); // cproxy listens for telnet on port 5200
 
 	int localTelnetSocketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
