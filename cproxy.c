@@ -80,6 +80,13 @@ int main(int argc, char *argv[])
 	while (1) {
 		// Block the thread until either the local telnet connection or the server telnet
 		// connection, or both, have sent us data.
+		FD_ZERO(&readFileDescriptorSet);
+		FD_ZERO(&writeFileDescriptorSet);
+		FD_SET(localTelnetSocketDescriptor, &readFileDescriptorSet);
+		FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);
+		FD_SET(localTelnetSocketDescriptor, &writeFileDescriptorSet);
+		FD_SET(serverTelnetSocketDescriptor, &writeFileDescriptorSet);
+
 		timeout.tv_sec = 10;
 		timeout.tv_usec = 0;
 		int fdsToRead = select(numFDs, &readFileDescriptorSet, &writeFileDescriptorSet, NULL, &timeout);
@@ -111,9 +118,9 @@ int main(int argc, char *argv[])
 				} else {
 					// Forward buffer to the local telnet daemon.
 					//if (FD_ISSET(localTelnetSocketDescriptor, &writeFileDescriptorSet)) {
-					//	printf("Will send to local telnet session.\n");
-					//	send(localTelnetSession, serverTelnetBuffer, bytesReceived, 0);
-					//	printf("Did send to local telnet session.\n\n");
+						printf("Will send to local telnet session.\n");
+						send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
+						printf("Did send to local telnet session.\n\n");
 					//}
 				}
 			} 
@@ -128,21 +135,21 @@ int main(int argc, char *argv[])
 					exit(EXIT_FAILURE);
 				} else {
 					// Forward buffer to the server telnet daemon.
-					//if (FD_ISSET(serverTelnetSocketDescriptor, &writeFileDescriptorSet)) {
-					//	printf("Will send to server telnet session.\n");
-					//	send(serverTelnetSocketDescriptor, localTelnetBuffer, bytesReceived, 0);
-					//	printf("Did send to server telnet session.\n\n");
-					//}
+					if (FD_ISSET(serverTelnetSocketDescriptor, &writeFileDescriptorSet)) {
+						printf("Will send to server telnet session.\n");
+						send(serverTelnetSocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
+						printf("Did send to server telnet session.\n\n");
+					}
 				}
 			}
 
-			if (serverTelnetBytesReceived > 0 && FD_ISSET(localTelnetSocketDescriptor, &writeFileDescriptorSet)) {
+			if (serverTelnetBytesReceived > 0 && FD_ISSET(localTelnetSocketDescriptor, &writeFileDescriptorSet) > 0) {
 				printf("Will send to local telnet session.\n");
 				send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
 				printf("Did send to local telnet session.\n\n");	
 			}
 
-            if(localTelnetBytesReceived > 0 && FD_ISSET(serverTelnetSocketDescriptor, &writeFileDescriptorSet)) {
+            if(localTelnetBytesReceived > 0 && FD_ISSET(serverTelnetSocketDescriptor, &writeFileDescriptorSet) > 0) {
                 printf("Will sent to local telnet session.\n");
                 send(serverTelnetSocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
                 printf("Did send to local telnet session. \n\n");
