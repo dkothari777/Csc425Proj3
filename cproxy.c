@@ -16,11 +16,10 @@ struct sockaddr_in LocalTelnetAddress;
 struct sockaddr_in SproxyAddress;
 struct sockaddr_in ServerTelnetAddress;
 
-//METHODS IMPLEMENTED
-void printUsage(FILE *stream);
 int setUpLocalTelnetConnection();
 int setUpSproxyConnection(char *ipAddress);
 int setUpServerTelnetConnection();
+void printUsage(FILE *stream);
 
 int main(int argc, char *argv[])
 {
@@ -86,7 +85,6 @@ int main(int argc, char *argv[])
 		else if (fdsToRead == 0) {
 			printf("Timeout occurred!\n");
 			// TODO: Implement heartbeat functionality.
-			exit(EXIT_FAILURE);
 		}
 
 		// Otherwise, there is data to be read from the sockets!
@@ -99,7 +97,7 @@ int main(int argc, char *argv[])
 				printf("Did receive from local telnet session: %d\n\n", localTelnetBytesReceived);
 				
                 // Forward the packet to the server telnet session.
-                if (localTelnetBytesReceived >= 0) {
+                if (localTelnetBytesReceived > 0) {
                     printf("Will send to server telnet session: %d.\n", localTelnetBytesReceived);
 					int sent = send(serverTelnetSocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
                     localTelnetBytesReceived = 0;
@@ -115,11 +113,16 @@ int main(int argc, char *argv[])
 				printf("Did receive from server telnet session: %d.\n\n", serverTelnetBytesReceived);
                 
 				// Forward the packet to the local telnet session.
-				if (serverTelnetBytesReceived >= 0){
+				if (serverTelnetBytesReceived > 0){
 					printf("Will send to local telnet session: %d.\n", serverTelnetBytesReceived);
                     int sent = send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
                     serverTelnetBytesReceived = 0;
 					printf("Did send to local telnet session: %d.\n", sent);
+                }
+
+                // TODO: 0 bytes were received... maybe close connection & reconnect?
+                else if (serverTelnetBytesReceived == 0) {
+
                 }
             }
 		}
@@ -128,25 +131,22 @@ int main(int argc, char *argv[])
 	return EXIT_SUCCESS;
 }
 
-void printUsage(FILE *stream)
-{
-	fprintf(stream, "Usage: cproxy <w.x.y.z>\n");
-}
-
 int setUpLocalTelnetConnection()
 {
-	memset(&LocalTelnetAddress, 0, sizeof(LocalTelnetAddress)); // 0 out the struct
-    LocalTelnetAddress.sin_family = AF_INET;                    // Domain is the internet.
+    // Set up the local telnet's address information (here on cproxy).
+	memset(&LocalTelnetAddress, 0, sizeof(LocalTelnetAddress)); // 0 out the struct.
+    LocalTelnetAddress.sin_family = AF_INET;                    // Domain is the Internet.
     LocalTelnetAddress.sin_addr.s_addr = INADDR_ANY;            // Any IP address will do? Maybe localhost
     LocalTelnetAddress.sin_port = htons(5200);                  // cproxy listens for telnet on port 5200
 
+    // Create the socket.
 	int localTelnetSocketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
 	if (localTelnetSocketDescriptor < 0) {
 		fprintf(stderr, "ERROR creating local telnet socket.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	// Bind socket to an address
+	// Bind socket to an address.
 	if (bind(localTelnetSocketDescriptor, (struct sockaddr *) &LocalTelnetAddress, sizeof(LocalTelnetAddress)) < 0) {
 		fprintf(stderr, "ERROR binding to local telnet socket.\n");
 		exit(EXIT_FAILURE);
@@ -158,11 +158,11 @@ int setUpLocalTelnetConnection()
 int setUpSproxyConnection(char *ipAddress)
 {
 	// Set up the server's address information (sproxy).
-	memset(&SproxyAddress, 0, sizeof(SproxyAddress)); // 0 out the struct
-	SproxyAddress.sin_family = AF_INET; // Domain is the internet.
-	SproxyAddress.sin_port = htons(6200); // The server listens on port 6200.
+	memset(&SproxyAddress, 0, sizeof(SproxyAddress));           // 0 out the struct.
+	SproxyAddress.sin_family = AF_INET;                         // Domain is the Internet.
+	SproxyAddress.sin_port = htons(6200);                       // The server listens on port 6200.
 
-	// Set the IP address
+	// Set the IP address which was passed in by the user.
 	if (inet_pton(AF_INET, ipAddress, &SproxyAddress.sin_addr) < 1) {
 		fprintf(stderr, "ERROR parsing sproxy IP Address.\n");
 		printUsage(stderr);
@@ -179,20 +179,18 @@ int setUpSproxyConnection(char *ipAddress)
 	return sproxySocketDescriptor;
 }
 
+// Hardcode IP address for telnet address on server & port 23
+// for telnet -> cproxy -> daemon debug process.	
 int setUpServerTelnetConnection()
 {
-	// Hardcode IP address for telnet address on server & port 23
-	// for telnet -> cproxy -> daemon debug process.
-	
 	// Set up the server's address information (sproxy).
-	memset(&ServerTelnetAddress, 0, sizeof(ServerTelnetAddress)); // 0 out the struct
-	ServerTelnetAddress.sin_family = AF_INET; // Domain is the internet.
-	ServerTelnetAddress.sin_port = htons(23); // The server listens on port 6200.
+	memset(&ServerTelnetAddress, 0, sizeof(ServerTelnetAddress));   // 0 out the struct
+	ServerTelnetAddress.sin_family = AF_INET;                       // Domain is the Internet.
+	ServerTelnetAddress.sin_port = htons(23);                       // The server listens on port 6200.
 
 	// Set the IP address (hardcoded at server vm46's IP address).
 	if (inet_pton(AF_INET, "192.168.8.2", &ServerTelnetAddress.sin_addr) < 1) {
-		fprintf(stderr, "ERROR parsing sproxy IP Address.\n");
-		printUsage(stderr);
+		fprintf(stderr, "ERROR parsing server telnet IP Address.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -204,4 +202,9 @@ int setUpServerTelnetConnection()
 	}
 
 	return serverTelnetSocketDescriptor;
+}
+
+void printUsage(FILE *stream)
+{
+	fprintf(stream, "Usage: cproxy <w.x.y.z>\n");
 }

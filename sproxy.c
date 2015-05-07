@@ -8,54 +8,70 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 
-void setupTelnetConnection();
-int setupSproxyServer();
+struct sockaddr_in CproxyAddress;
+struct sockaddr_in TelnetDaemonAddress;
 
+int setUpCproxyConnection();
+int setUpTelnetDaemonConnection();
 
 int main(int argc, char *argv[])
 {
-	// TODO: This is where we start the server.
+    // Set up the cproxy & telnet daemon connections.
+    int cproxySocketDescriptor = setUpCproxyConnection();
+    int telnetDaemonSocketDescriptor = setUpTelnetDaemonConnection();
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
-void setupTelenetConnection(){
-	//TODO: NEED to talk to teacher about this
-	return;
+int setUpCproxyConnection()
+{
+    // Set up the cproxy's address information (on cproxy).
+    memset(&CproxyAddress, 0, sizeof(CproxyAddress);                // 0 out the struct.
+    CproxyAddress.sin_family = AF_INET;                             // Domain is the Internet.
+    CproxyAddress.sin_addr.s_addr = INADDR_ANY;                     // Any incoming IP address will do.
+    CproxyAddress.sin_port = htons(6200);                           // sproxy listens for cproxy on port 6200.
+
+    // Create the socket.
+    int cproxySocketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+    if (cproxySocketDescriptor < 0) {
+        fprintf(stderr, "ERROR creating cproxy socket.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Bind the socket to an address.
+    if (bind(cproxySocketDescriptor, (struct sockaddr *) &CproxyAddress, sizeof(CproxyAddress)) < 0) {
+        fprintf(stderr, "ERROR binding to cproxy socket.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return cproxySocketDescriptor;
 }
 
-int setupSproxyServer(){
+int setUpTelnetDaemonConnection()
+{
+    // Set up the telnet daemon's address information (here on sproxy).
+    memset(&TelnetDaemonAddress, 0, sizeof(TelnetDaemonAddress));   // 0 out the struct.
+    TelnetDaemonAddress.sin_family = AF_INET;                       // Domain is the Internet.
+    TelnetDaemonAddress.sin_port = htons(23);                       // The telnet daemon listens on port 23.
 
-	struct sockaddr_in sproxyAddr;	
-	// create a stream socket(TCP)
-	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd <0)
-	{
-		fprintf(stderr, "ERROR opening socket");
-		exit(EXIT_FAILURE);
-	}	
-	// 0 out the struct
-	memset(&sproxyAddr, 0, sizeof(sproxyAddr));
+    // Set the IP address.
+    if (inet_pton(AF_INET, "127.0.0.1", &TelnetDaemonAddress.sin_addr) < 1) {
+        fprintf(stderr, "ERROR parsing telnet daemon address.\n");
+        exit(EXIT_FAILURE);
+    }
 
-	//domain is the internet
-	sproxyAddr.sin_family = AF_INET;
+    // Create the socket.
+    int telnetDaemonSocketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+    if (telnetDaemonSocketDescriptor < 0) {
+        fprintf(stderr, "ERROR creating telnet daemon socket.\n");
+        exit(EXIT_FAILURE);
+    }
 
-	//any IP address will do
-	sproxyAddr.sin_addr.s_addr = INADDR_ANY;
-
-	//set port number 
-	sproxyAddr.sin_port = htons(6200);
-
-	//bind socket to an address
-	if(bind(sockfd, (struct sockaddr *) &sproxyAddr, sizeof(sproxyAddr)) < 0)
-	{
-		fprintf(stderr, "ERROR on bind");
-		exit(EXIT_FAILURE);	
-	}
-	return sockfd;
+    return telnetDaemonSocketDescriptor;
 }
 
