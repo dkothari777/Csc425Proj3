@@ -35,5 +35,9 @@
 cproxy
 sproxy
 
-#Mac backups
+# Mac backups
 *.un~
+
+# Currently opened files.
+*.scp
+
