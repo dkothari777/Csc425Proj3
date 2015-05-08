@@ -11,13 +11,14 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include "debug.h"
 
 struct sockaddr_in LocalTelnetAddress;
 struct sockaddr_in SproxyAddress;
+struct sockaddr_in ServerTelnetAddress;
 
 int setUpLocalTelnetConnection();
 int setUpSproxyConnection(char *ipAddress);
+int setUpServerTelnetConnection();
 void printUsage(FILE *stream);
 
 int main(int argc, char *argv[])
@@ -30,7 +31,8 @@ int main(int argc, char *argv[])
 
 	// Set up the local telnet & sproxy connections.
 	int localTelnetSocketDescriptor = setUpLocalTelnetConnection();
-	int sproxySocketDescriptor = setUpSproxyConnection(argv[1]);
+	// int sproxySocketDescriptor = setUpSproxyConnection(argv[1]);
+	int serverTelnetSocketDescriptor = setUpServerTelnetConnection();
 		
 	// Listen for packets from telnet process on this machine. Set the timeout to 100ms.
     // Also, accept the connection request from the local telnet process on this machine.
@@ -42,9 +44,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	// Connect to sproxy.
-	if (connect(sproxySocketDescriptor, (struct sockaddr *) &SproxyAddress, sizeof(SproxyAddress)) < 0) {
-		fprintf(stderr, "ERROR connecting to sproxy.\n");
+	// Connect to server telnet daemon.
+	if (connect(serverTelnetSocketDescriptor, (struct sockaddr *) &ServerTelnetAddress, sizeof(ServerTelnetAddress)) < 0) {
+		fprintf(stderr, "ERROR connecting to server telnet daemon.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -56,9 +58,9 @@ int main(int argc, char *argv[])
 
 	// Continuously check for telnet packets on this machine.
 	int localTelnetBytesReceived;
-	int sproxyBytesReceived;
+	int serverTelnetBytesReceived;
 	char localTelnetBuffer[4096];
-	char sproxyBuffer[4096];
+	char serverTelnetBuffer[4096];
     int fdsToRead;
 
 	while (1) {
@@ -66,11 +68,11 @@ int main(int argc, char *argv[])
 		// connection, or both, have sent us data.
         FD_ZERO(&readFileDescriptorSet);
         FD_SET(localTelnetSession, &readFileDescriptorSet);             // Value returned from accept() above in main().
-        FD_SET(sproxySocketDescriptor, &readFileDescriptorSet);   // Value returned from socket() in setUpServerTelnetConnection().
+        FD_SET(serverTelnetSocketDescriptor, &readFileDescriptorSet);   // Value returned from socket() in setUpServerTelnetConnection().
 
         timeout.tv_sec = 1;
 		timeout.tv_usec = 0;
-		int maxFD = (localTelnetSession > sproxySocketDescriptor ? localTelnetSession : sproxySocketDescriptor);
+		int maxFD = (localTelnetSession > serverTelnetSocketDescriptor ? localTelnetSession : serverTelnetSocketDescriptor);
 		fdsToRead = select(maxFD+1, &readFileDescriptorSet, NULL, NULL, &timeout);
 
 		// Check for errors in select().
@@ -81,41 +83,41 @@ int main(int argc, char *argv[])
 
 		// Check if a timeout occured.
 		else if (fdsToRead == 0) {
-			DLog("Timeout occurred!\n");
+			printf("Timeout occurred!\n");
 			// TODO: Implement heartbeat functionality.
 		}
 
 		// Otherwise, there is data to be read from the sockets!
 		else {
-			// Receive from local telnet.
+			// Receive from local telnet session.
 			if (FD_ISSET(localTelnetSession, &readFileDescriptorSet)) {
-				DLog("Will receive from local telnet.");
+				printf("Will receive from local telnet session.\n");
                 memset(localTelnetBuffer, 0, sizeof(localTelnetBuffer));
 				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
-				DLog("Did receive from local telnet: %d\n", localTelnetBytesReceived);
+				printf("Did receive from local telnet session: %d\n\n", localTelnetBytesReceived);
 				
-                // Forward the packet to sproxy.
+                // Forward the packet to the server telnet session.
                 if (localTelnetBytesReceived > 0) {
-                    DLog("Will send to sproxy session: %d.", localTelnetBytesReceived);
-					int sent = send(sproxySocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
+                    printf("Will send to server telnet session: %d.\n", localTelnetBytesReceived);
+					int sent = send(serverTelnetSocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
                     localTelnetBytesReceived = 0;
-					DLog("Did send to sproxy session: %d.", sent);
+					printf("Did send to server telnet session: %d.\n", sent);
                 }
 			}
 
-			// Receive from sproxy.
-			if (FD_ISSET(sproxySocketDescriptor, &readFileDescriptorSet)) {
-				DLog("Will receive from server telnet.");
-                memset(sproxyBuffer, 0, sizeof(sproxyBuffer));
-				sproxyBytesReceived = recv(sproxySocketDescriptor, sproxyBuffer, sizeof(sproxyBuffer), 0);
-				DLog("Did receive from server telnet: %d.\n", sproxyBytesReceived);
+			// Receive from server telnet daemon.
+			if (FD_ISSET(serverTelnetSocketDescriptor, &readFileDescriptorSet)) {
+				printf("Will receive from server telnet session.\n");
+                memset(serverTelnetBuffer, 0, sizeof(serverTelnetBuffer));
+				serverTelnetBytesReceived = recv(serverTelnetSocketDescriptor, serverTelnetBuffer, sizeof(serverTelnetBuffer), 0);
+				printf("Did receive from server telnet session: %d.\n\n", serverTelnetBytesReceived);
                 
-				// Forward the packet to the local telnet.
-				if (sproxyBytesReceived > 0){
-					DLog("Will send to local telnet: %d.", sproxyBytesReceived);
-                    int sent = send(localTelnetSession, sproxyBuffer, sproxyBytesReceived, 0);
-                    sproxyBytesReceived = 0;
-					DLog("Did send to local telnet: %d.\n", sent);
+				// Forward the packet to the local telnet session.
+				if (serverTelnetBytesReceived > 0){
+					printf("Will send to local telnet session: %d.\n", serverTelnetBytesReceived);
+                    int sent = send(localTelnetSession, serverTelnetBuffer, serverTelnetBytesReceived, 0);
+                    serverTelnetBytesReceived = 0;
+					printf("Did send to local telnet session: %d.\n", sent);
                 }
             }
 		}
@@ -170,6 +172,31 @@ int setUpSproxyConnection(char *ipAddress)
 	}
 
 	return sproxySocketDescriptor;
+}
+
+// Hardcode IP address for telnet address on server & port 23
+// for telnet -> cproxy -> daemon debug process.	
+int setUpServerTelnetConnection()
+{
+	// Set up the server's address information (sproxy).
+	memset(&ServerTelnetAddress, 0, sizeof(ServerTelnetAddress));   // 0 out the struct
+	ServerTelnetAddress.sin_family = AF_INET;                       // Domain is the Internet.
+	ServerTelnetAddress.sin_port = htons(23);                       // The server listens on port 6200.
+
+	// Set the IP address (hardcoded at server vm46's IP address).
+	if (inet_pton(AF_INET, "192.168.8.2", &ServerTelnetAddress.sin_addr) < 1) {
+		fprintf(stderr, "ERROR parsing server telnet IP Address.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	// Create the socket.
+	int serverTelnetSocketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
+	if (serverTelnetSocketDescriptor < 0) {
+		fprintf(stderr, "ERROR creating server telnet socket.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return serverTelnetSocketDescriptor;
 }
 
 void printUsage(FILE *stream)
