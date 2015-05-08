@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include "debug.h"
 
 struct sockaddr_in CproxyAddress;
 struct sockaddr_in TelnetDaemonAddress;
@@ -72,41 +73,41 @@ int main(int argc, char *argv[])
                                                                                                                                             
         // Check if a timeout occured.                                                                                                      
         else if (fdsToRead == 0) {                                                                                                          
-            printf("Timeout occurred!\n");                                                                                                  
+            DLog("Timeout occurred!");                                                                                                  
             // TODO: Implement heartbeat functionality.                                                                                     
         }
 
 		// Otherwise, there is data to be read from the sockets!
 		else {
-            // Receive from cproxy session.
+            // Receive from cproxy.
             if (FD_ISSET(cproxySession, &readFileDescriptorSet)) {
-                printf("Will receive from cproxy session.\n");
+                DLog("Will receive from cproxy.");
                 memset(cproxyBuffer, 0, sizeof(cproxyBuffer));
                 cproxyBytesReceived = recv(cproxySession, cproxyBuffer, sizeof(cproxyBuffer), 0);
-                printf("Did receive from cproxy session: %d\n\n", cproxyBytesReceived);
+                DLog("Did receive from cproxy: %d\n", cproxyBytesReceived);
                 
                 // Forward the packet to the telnet daemon.
                 if (cproxyBytesReceived > 0) {
-                    printf("Will send to telnet daemon session: %d.\n", cproxyBytesReceived);
+                    DLog("Will send to telnet daemon: %d.", cproxyBytesReceived);
                     int sent = send(telnetDaemonSocketDescriptor, cproxyBuffer, cproxyBytesReceived, 0);
                     cproxyBytesReceived = 0;
-                    printf("Did send to telnet daemon session: %d.\n", sent);
+                    DLog("Did send to telnet daemon: %d.\n", sent);
                 }
             }
 
             // Receive from telnet daemon.
             if (FD_ISSET(telnetDaemonSocketDescriptor, &readFileDescriptorSet)) {
-                printf("Will receive from telnet daemon session.\n");
+                DLog("Will receive from telnet daemon.");
                 memset(telnetDaemonBuffer, 0, sizeof(telnetDaemonBuffer));
                 telnetDaemonBytesReceived = recv(telnetDaemonSocketDescriptor, telnetDaemonBuffer, sizeof(telnetDaemonBuffer), 0);
-                printf("Did receive from server telnet session: %d.\n\n", telnetDaemonBytesReceived);
+                DLog("Did receive from telnet daemon: %d.\n", telnetDaemonBytesReceived);
                 
                 // Forward the packet to cproxy.
                 if (telnetDaemonBytesReceived > 0){
-                    printf("Will send to local telnet session: %d.\n", telnetDaemonBytesReceived);
+                    DLog("Will send to local telnet session: %d.", telnetDaemonBytesReceived);
                     int sent = send(cproxySession, telnetDaemonBuffer, telnetDaemonBytesReceived, 0);
                     telnetDaemonBytesReceived = 0;
-                    printf("Did send to local telnet session: %d.\n", sent);
+                    DLog("Did send to local telnet session: %d.\n", sent);
                 }
             }	
 		}

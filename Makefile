@@ -6,10 +6,10 @@
 
 all: cproxy sproxy
 
-cproxy: cproxy.c
+cproxy: cproxy.c debug.h
 	gcc -o cproxy cproxy.c
 
-sproxy: sproxy.c
+sproxy: sproxy.c debug.h
 	gcc -o sproxy sproxy.c
 
 clean:
