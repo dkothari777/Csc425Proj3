@@ -25,13 +25,100 @@ int main(int argc, char *argv[])
     int cproxySocketDescriptor = setUpCproxyConnection();
     int telnetDaemonSocketDescriptor = setUpTelnetDaemonConnection();
 
-	return EXIT_SUCCESS;
+	// Connect to the telnet daemon on this server.
+	if (connect(telnetDaemonSocketDescriptor, (struct sockaddr *) &TelnetDaemonAddress, sizeof(TelnetDaemonAddress)) < 0) {
+		fprintf(stderr, "ERROR on connecting to telnet daemon.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	// Listen for packets from cproxy on the client server. Set the timeout to 10s.
+	// Also, accept the connection request from cproxy.
+	listen(cproxySocketDescriptor, 10000);
+	int cproxyAddressLen = sizeof(CproxyAddress);
+	int cproxySession = accept(cproxySocketDescriptor, (struct sockaddr *) &CproxyAddress, &cproxyAddressLen);
+	if (cproxySession < 0) {
+		fprintf(stderr, "ERROR on cproxy session accept.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	// Do the initial preparation for select().
+	fd_set readFileDescriptorSet;
+	struct timeval timeout;
+
+    // Continuously check for telnet packets on this machine.
+    int cproxyBytesReceived;
+    int telnetDaemonBytesReceived;
+    char cproxyBuffer[4096];
+    char telnetDaemonBuffer[4096];
+    int fdsToRead; 
+
+	while (1) {
+        // Block the thread until either the cproxy connection or the telnet daemon
+        // connection, or both, have sent us data.
+        FD_ZERO(&readFileDescriptorSet);
+        FD_SET(cproxySession, &readFileDescriptorSet);		            // Value returned from accept() above in main().
+        FD_SET(telnetDaemonSocketDescriptor, &readFileDescriptorSet);	// Value returned from socket() in setUpTelnetDaemonConnection().
+
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
+        int maxFD = (cproxySession > telnetDaemonSocketDescriptor ? cproxySession : telnetDaemonSocketDescriptor);
+        fdsToRead = select(maxFD+1, &readFileDescriptorSet, NULL, NULL, &timeout);
+
+        // Check for errors in select().
+        if (fdsToRead == -1) {                                                                                                              
+            fprintf(stderr, "ERROR in select().\n");                                                                                        
+            exit(EXIT_FAILURE);                                                                                                             
+        }                                                                                                                                   
+                                                                                                                                            
+        // Check if a timeout occured.                                                                                                      
+        else if (fdsToRead == 0) {                                                                                                          
+            printf("Timeout occurred!\n");                                                                                                  
+            // TODO: Implement heartbeat functionality.                                                                                     
+        }
+
+		// Otherwise, there is data to be read from the sockets!
+		else {
+            // Receive from cproxy session.
+            if (FD_ISSET(cproxySession, &readFileDescriptorSet)) {
+                printf("Will receive from cproxy session.\n");
+                memset(cproxyBuffer, 0, sizeof(cproxyBuffer));
+                cproxyBytesReceived = recv(cproxySession, cproxyBuffer, sizeof(cproxyBuffer), 0);
+                printf("Did receive from cproxy session: %d\n\n", cproxyBytesReceived);
+                
+                // Forward the packet to the telnet daemon.
+                if (cproxyBytesReceived > 0) {
+                    printf("Will send to telnet daemon session: %d.\n", cproxyBytesReceived);
+                    int sent = send(telnetDaemonSocketDescriptor, cproxyBuffer, cproxyBytesReceived, 0);
+                    cproxyBytesReceived = 0;
+                    printf("Did send to telnet daemon session: %d.\n", sent);
+                }
+            }
+
+            // Receive from telnet daemon.
+            if (FD_ISSET(telnetDaemonSocketDescriptor, &readFileDescriptorSet)) {
+                printf("Will receive from telnet daemon session.\n");
+                memset(telnetDaemonBuffer, 0, sizeof(telnetDaemonBuffer));
+                telnetDaemonBytesReceived = recv(telnetDaemonSocketDescriptor, telnetDaemonBuffer, sizeof(telnetDaemonBuffer), 0);
+                printf("Did receive from server telnet session: %d.\n\n", telnetDaemonBytesReceived);
+                
+                // Forward the packet to cproxy.
+                if (telnetDaemonBytesReceived > 0){
+                    printf("Will send to local telnet session: %d.\n", telnetDaemonBytesReceived);
+                    int sent = send(cproxySession, telnetDaemonBuffer, telnetDaemonBytesReceived, 0);
+                    telnetDaemonBytesReceived = 0;
+                    printf("Did send to local telnet session: %d.\n", sent);
+                }
+            }	
+		}
+	}
+
+    return EXIT_SUCCESS;
 }
 
 int setUpCproxyConnection()
 {
     // Set up the cproxy's address information (on cproxy).
-    memset(&CproxyAddress, 0, sizeof(CproxyAddress);                // 0 out the struct.
+    memset(&CproxyAddress, 0, sizeof(CproxyAddress));               // 0 out the struct.
     CproxyAddress.sin_family = AF_INET;                             // Domain is the Internet.
     CproxyAddress.sin_addr.s_addr = INADDR_ANY;                     // Any incoming IP address will do.
     CproxyAddress.sin_port = htons(6200);                           // sproxy listens for cproxy on port 6200.
