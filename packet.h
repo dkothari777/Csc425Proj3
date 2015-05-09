@@ -33,7 +33,7 @@ struct packet *makeApplicationDataPacket(char payload[4096], int payloadLength)
     packet->payloadLength = payloadLength;
     //memset(packet->payload, 0, sizeof(packet->payload));
     //memcpy(packet->payload, payload, payloadLength);
-    strncpy(packet->payload, payload, strlen(payload)+1);
+    strncpy(packet->payload, payload, 4096);
 
     return packet;
 }

@@ -84,9 +84,9 @@ int main(int argc, char *argv[])
 			DLog("Timeout occurred!");
             
             //DLog("Will send heartbeat to sproxy.");
-            struct packet *heartbeatPacket = makeHeartbeatPacket();
-			int sent = send(sproxySocketDescriptor, heartbeatPacket, sizeof(struct packet), 0);
-            DLog("Did send heartbeat to sproxy: %d.\n", sent);
+            //struct packet *heartbeatPacket = makeHeartbeatPacket();
+			//int sent = send(sproxySocketDescriptor, heartbeatPacket, sizeof(struct packet), 0);
+            //DLog("Did send heartbeat to sproxy: %d.\n", sent);
 
             // Free the heartbeat packet from memory.
             // free(heartbeatPacket);
