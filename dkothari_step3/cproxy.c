@@ -62,10 +62,14 @@ int main(int argc, char *argv[])
 	char sproxyBuffer[2048];
     char sendBuffer[2048];
     int fdsToRead;
+    int hcount = 0;
     
     struct packet * rbuffer = (struct packet *) malloc(sizeof(struct packet));
     struct packet * sbuffer = (struct packet *) malloc(sizeof(struct packet));
-
+    struct packet * heartbeat = (struct packet*) malloc(sizeof(struct packet));
+    memset(heartbeat->payload, 0, sizeof(heartbeat->payload));
+    heartbeat -> pLength = 0;
+    heartbeat -> type = PacketTypeHeartbeat;
 	while (1) {
 		// Block the thread until either the local telnet connection or the server telnet
 		// connection, or both, have sent us data.
@@ -88,7 +92,15 @@ int main(int argc, char *argv[])
 		else if (fdsToRead == 0) {
 			DLog("Timeout occurred!\n");
 			// TODO: Implement heartbeat functionality.
-            exit(EXIT_SUCCESS);
+            if(hcount >= 3) {
+                DLog("Three missed heartbeats\n");
+                exit(EXIT_SUCCESS);
+            }
+            memset(sendBuffer, 0, sizeof(sendBuffer));
+            memcpy(sendBuffer, heartbeat, sizeof(struct packet));
+            send(sproxySocketDescriptor, sendBuffer, sizeof(struct packet), 0);
+            hcount++; 
+            DLog("Did send heartbeat to sproxy\n");
 		}
 
 		// Otherwise, there is data to be read from the sockets!
@@ -103,8 +115,9 @@ int main(int argc, char *argv[])
                 memset(sbuffer->payload, 0, sizeof(sbuffer->payload));
                 memcpy(sbuffer->payload, localTelnetBuffer, localTelnetBytesReceived);
                 sbuffer->pLength = localTelnetBytesReceived;
+                sbuffer->type = PacketTypeApplicationData;
 
-                //conver packet to SendBuffer
+                //convert packet to SendBuffer
                 memset(sendBuffer, 0, sizeof(sendBuffer));
                 memcpy(sendBuffer, sbuffer, sizeof(struct packet));
                 
@@ -128,9 +141,15 @@ int main(int argc, char *argv[])
 
 				// Forward the packet to the local telnet.
 				if (sproxyBytesReceived > 0){
-                    int sent = send(localTelnetSession, rbuffer->payload, rbuffer->pLength, 0);
+                    if(rbuffer->type == PacketTypeHeartbeat){
+                        hcount = 0;
+                        DLog("Received heartbeat from sproxy\n");
+                    }
+                    else{
+                        int sent = send(localTelnetSession, rbuffer->payload, rbuffer->pLength, 0);
+					    DLog("Did send to local telnet: %d.\n", sent);
+                    }
                     sproxyBytesReceived = 0;
-					DLog("Did send to local telnet: %d.\n", sent);
                 }
             }
 		}
