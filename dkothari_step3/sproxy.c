@@ -78,7 +78,6 @@ int main(int argc, char *argv[])
         // Check if a timeout occured.                                                                                                      
         else if (fdsToRead == 0) {                                                                                                          
             DLog("Timeout occurred!");
-            exit(EXIT_SUCCESS);                                                                                                 
             // TODO: Implement heartbeat functionality.                                                                                     
         }
 
