@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 
 		// Check if a timeout occured.
 		else if (fdsToRead == 0) {
-			DLog("Timeout occurred!\n");
+			DLog("Timeout occurred!");
             
             //DLog("Will send heartbeat to sproxy.");
             struct packet *heartbeatPacket = makeHeartbeatPacket();
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 				//DLog("Will receive from local telnet.");
                 memset(localTelnetBuffer, 0, sizeof(localTelnetBuffer));
 				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
-                DLog("\nDid receive from local telnet: %d", localTelnetBytesReceived);
+                DLog("Did receive from local telnet: %d.", localTelnetBytesReceived);
 				
                 // Encode the data received from local telnet into an application packet and send
                 // it to sproxy.
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
                     //DLog("Will send to sproxy session: %lu.", sizeof(struct packet));
 					int sent = send(sproxySocketDescriptor, applicationDataPacket, sizeof(struct packet), 0);
                     localTelnetBytesReceived = 0;
-					DLog("Did send to sproxy session: %d.", sent);
+					DLog("Did send to sproxy session: %d.\n", sent);
                 }
 
                 // Free the application data packet from memory.
@@ -123,11 +123,11 @@ int main(int argc, char *argv[])
 
                 //DLog("Will receive from server telnet.");
 				sproxyBytesReceived = recv(sproxySocketDescriptor, packet, sizeof(struct packet), 0);
-                DLog("\nDid receive from server telnet: %d.", sproxyBytesReceived);
+                DLog("Did receive from server telnet: %d.", sproxyBytesReceived);
                 
                 // A heartbeat packet was received.
                 if (packet->type == PacketTypeHeartbeat) {
-                    DLog("Heartbeat response was received from sproxy.");
+                    DLog("Heartbeat response was received from sproxy.\n");
                     // TODO: Clear hearbeat counter from x to 0.
                 }
 
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
                         //DLog("Will send to local telnet: %d.", packet->payloadLength);
                         int sent = send(localTelnetSession, packet->payload, packet->payloadLength, 0);
                         sproxyBytesReceived = 0;
-                        DLog("Did send to local telnet: %d.", sent);
+                        DLog("Did send to local telnet: %d.\n", sent);
                     }
                 }
 

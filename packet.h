@@ -6,9 +6,9 @@
 
 #include "debug.h"
 
-#define PacketTypeHeartbeat 0
-#define PacketTypeNewConnection 1
-#define PacketTypeApplicationData 2
+#define PacketTypeHeartbeat 1
+#define PacketTypeNewConnection 2
+#define PacketTypeApplicationData 3
 
 struct packet {
     int type;
