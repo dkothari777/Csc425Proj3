@@ -51,7 +51,10 @@ int main(int argc, char *argv[])
     int cproxyBytesReceived;
     int telnetDaemonBytesReceived;
     char telnetDaemonBuffer[4096];
-    int fdsToRead; 
+    int fdsToRead;
+
+ 
+    struct packet *heartbeatPacket = makeHeartbeatPacket();
 
 	while (1) {
         // Block the thread until either the cproxy connection or the telnet daemon
@@ -81,7 +84,7 @@ int main(int argc, char *argv[])
 		else {
             // Receive from cproxy.
             if (FD_ISSET(cproxySession, &readFileDescriptorSet)) {
-                struct packet *packet = malloc(sizeof(packet));
+                struct packet *packet = malloc(sizeof(struct packet));
 
                 //DLog("Will receive from cproxy.");
                 cproxyBytesReceived = recv(cproxySession, packet, sizeof(struct packet), 0);
@@ -92,7 +95,6 @@ int main(int argc, char *argv[])
                     DLog("Heartbeat was received from cproxy.");
                     
                     //DLog("Will send heartbeat to cproxy.");
-                    struct packet *heartbeatPacket = makeHeartbeatPacket();
                     int sent = send(cproxySession, heartbeatPacket, sizeof(struct packet), 0);
                     DLog("Did send heartbeat to cproxy: %d.", sent);
 
