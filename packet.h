@@ -4,6 +4,8 @@
 // CSC 425
 // Project 3
 
+#include "debug.h"
+
 #define PacketTypeHeartbeat 0
 #define PacketTypeNewConnection 1
 #define PacketTypeApplicationData 2
@@ -32,6 +34,8 @@ struct packet *makeApplicationDataPacket(char *payload, int payloadLength)
     //memset(packet->payload, 0, sizeof(packet->payload));
     //memcpy(packet->payload, payload, payloadLength);
     strncpy(packet->payload, payload, payloadLength);
+
+    DLog("%s", payload);
 
     return packet;
 }
