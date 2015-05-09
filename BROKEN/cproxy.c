@@ -64,6 +64,9 @@ int main(int argc, char *argv[])
     char sproxySendBuffer[2048];
     char sproxyReadBuffer[2048];
 
+    int waitingForHeartbeat = 0;
+    int missedHeartbeatsCounter = 0;
+
 	while (1) {
 		// Block the thread until either the local telnet connection or the server telnet
 		// connection, or both, have sent us data.
@@ -90,6 +93,8 @@ int main(int argc, char *argv[])
 			int sent = send(sproxySocketDescriptor, heartbeatPacket, sizeof(struct packet), 0);
             DLog("Did send heartbeat to sproxy: %d.\n", sent);
 
+            waitingForHeartbeat = 1;
+
             // Free the heartbeat packet from memory.
             free(heartbeatPacket);
 		}
@@ -98,7 +103,6 @@ int main(int argc, char *argv[])
 		else {
 			// Receive from local telnet.
 			if (FD_ISSET(localTelnetSession, &readFileDescriptorSet)) {
-				//DLog("Will receive from local telnet.");
                 memset(localTelnetBuffer, 0, sizeof(localTelnetBuffer));
 				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
                 DLog("Did receive from local telnet: %d.", localTelnetBytesReceived);
@@ -125,29 +129,40 @@ int main(int argc, char *argv[])
 			if (FD_ISSET(sproxySocketDescriptor, &readFileDescriptorSet)) {
                 memset(sproxyReadBuffer, 0, sizeof(struct packet)); 
 				sproxyBytesReceived = recv(sproxySocketDescriptor, sproxyReadBuffer, sizeof(struct packet), 0);
-                DLog("Did receive from server telnet: %d.", sproxyBytesReceived);
                
-                struct packet *packet = packetFromBuffer(sproxyReadBuffer);
- 
-                // A heartbeat packet was received.
-                if (packet->type == PacketTypeHeartbeat) {
-                    DLog("Heartbeat response was received from sproxy.\n");
-                    // TODO: Clear hearbeat counter from x to 0.
-                }
+                if (sproxyBytesReceived == 0 || waitingForHeartbeat == 1) {
+                    //DLog("Heartbeat missed.");
+                    //missedHeartbeatsCounter++;
+                    //
+                    //if (missedHeartbeatsCounter == 3) {
+                    //    DLog("3 heartbeats have been missed. Closing connection to sproxy.");
+                    // }
+                } else {
+                    DLog("Did receive from sproxy: %d.", sproxyBytesReceived);
 
-                // An application data packet was received.
-                else if (packet->type == PacketTypeApplicationData) {
-                    // Forward the application data packet to the local telnet.
-                    if (sproxyBytesReceived > 0){
-                        //DLog("Will send to local telnet: %d.", packet->payloadLength);
-                        int sent = send(localTelnetSession, packet->payload, packet->payloadLength, 0);
-                        sproxyBytesReceived = 0;
-                        DLog("Did send to local telnet: %d.\n", sent);
+                    struct packet *packet = packetFromBuffer(sproxyReadBuffer);
+     
+                    // A heartbeat packet was received.
+                    if (packet->type == PacketTypeHeartbeat) {
+                        DLog("Heartbeat response was received from sproxy.\n");
+                        waitingForHeartbeat = 0;
+                        missedHeartbeatsCounter = 0;
                     }
-                }
 
-                // Free the packet from memory.
-                // free(packet);
+                    // An application data packet was received.
+                    else if (packet->type == PacketTypeApplicationData) {
+                        // Forward the application data packet to the local telnet.
+                        if (sproxyBytesReceived > 0){
+                            //DLog("Will send to local telnet: %d.", packet->payloadLength);
+                            int sent = send(localTelnetSession, packet->payload, packet->payloadLength, 0);
+                            sproxyBytesReceived = 0;
+                            DLog("Did send to local telnet: %d.\n", sent);
+                        }
+                    }
+
+                    // Free the packet from memory.
+                    // free(packet);
+                }
             }
 		}
     }
@@ -207,3 +222,4 @@ void printUsage(FILE *stream)
 {
 	fprintf(stream, "Usage: cproxy <w.x.y.z>\n");
 }
+

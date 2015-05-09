@@ -106,7 +106,8 @@ int main(int argc, char *argv[])
 
                 // An application data packet was received.
                 else if (packet->type == PacketTypeApplicationData) {
-                    // Forward the packet to the telnet daemon.
+                    // Forward the packet to the telnet daemon
+					
                     if (cproxyBytesReceived > 0) {
                         //DLog("Will send to telnet daemon: %d.", packet->payloadLength);
                         int sent = send(telnetDaemonSocketDescriptor, packet->payload, packet->payloadLength, 0);
