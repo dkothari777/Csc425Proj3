@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include "debug.h"
+#include "packet.h"
 
 struct sockaddr_in LocalTelnetAddress;
 struct sockaddr_in SproxyAddress;
@@ -57,9 +58,13 @@ int main(int argc, char *argv[])
 	// Continuously check for telnet packets on this machine.
 	int localTelnetBytesReceived;
 	int sproxyBytesReceived;
-	char localTelnetBuffer[4096];
-	char sproxyBuffer[4096];
+	char localTelnetBuffer[2048];
+	char sproxyBuffer[2048];
+    char sendBuffer[2048];
     int fdsToRead;
+    
+    struct packet * rbuffer = (struct packet *) malloc(sizeof(struct packet));
+    struct packet * sbuffer = (struct packet *) malloc(sizeof(struct packet));
 
 	while (1) {
 		// Block the thread until either the local telnet connection or the server telnet
@@ -83,6 +88,7 @@ int main(int argc, char *argv[])
 		else if (fdsToRead == 0) {
 			DLog("Timeout occurred!\n");
 			// TODO: Implement heartbeat functionality.
+            exit(EXIT_SUCCESS);
 		}
 
 		// Otherwise, there is data to be read from the sockets!
@@ -94,10 +100,19 @@ int main(int argc, char *argv[])
 				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
 				DLog("Did receive from local telnet: %d\n", localTelnetBytesReceived);
 				
+                //Convert buffer to packet
+                memset(sbuffer->payload, 0, sizeof(sbuffer->payload));
+                memcpy(sbuffer->payload, localTelnetBuffer, localTelnetBytesReceived);
+                sbuffer->pLength = localTelnetBytesReceived;
+
+                //conver packet to SendBuffer
+                memset(sendBuffer, 0, sizeof(sendBuffer));
+                memcpy(sendBuffer, sbuffer, sizeof(struct packet));
+                
                 // Forward the packet to sproxy.
                 if (localTelnetBytesReceived > 0) {
                     DLog("Will send to sproxy session: %d.", localTelnetBytesReceived);
-					int sent = send(sproxySocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
+					int sent = send(sproxySocketDescriptor, sendBuffer, sizeof(struct packet), 0);
                     localTelnetBytesReceived = 0;
 					DLog("Did send to sproxy session: %d.", sent);
                 }
@@ -110,10 +125,14 @@ int main(int argc, char *argv[])
 				sproxyBytesReceived = recv(sproxySocketDescriptor, sproxyBuffer, sizeof(sproxyBuffer), 0);
 				DLog("Did receive from server telnet: %d.\n", sproxyBytesReceived);
                 
+
+                //Convert sproxyBuffer to packet
+                memcpy(rbuffer, sproxyBuffer, sizeof(struct packet));
+
 				// Forward the packet to the local telnet.
 				if (sproxyBytesReceived > 0){
 					DLog("Will send to local telnet: %d.", sproxyBytesReceived);
-                    int sent = send(localTelnetSession, sproxyBuffer, sproxyBytesReceived, 0);
+                    int sent = send(localTelnetSession, rbuffer->payload, rbuffer->pLength, 0);
                     sproxyBytesReceived = 0;
 					DLog("Did send to local telnet: %d.\n", sent);
                 }
