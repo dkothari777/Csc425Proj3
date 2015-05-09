@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 
                 //DLog("Will receive from cproxy.");
                 cproxyBytesReceived = recv(cproxySession, packet, sizeof(struct packet), 0);
-                DLog("\nDid receive from cproxy: %d", cproxyBytesReceived);
+                DLog("Did receive from cproxy: %d", cproxyBytesReceived);
                 
                 // A heartbeat packet was received.
                 if (packet->type == PacketTypeHeartbeat) {
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
                     
                     //DLog("Will send heartbeat to cproxy.");
                     int sent = send(cproxySession, heartbeatPacket, sizeof(struct packet), 0);
-                    DLog("Did send heartbeat to cproxy: %d.", sent);
+                    DLog("Did send heartbeat to cproxy: %d.\n", sent);
 
                     // Free the heartbeat packet from memory.
                     //free(heartbeatPacket);
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
                 //DLog("Will receive from telnet daemon.");
                 memset(telnetDaemonBuffer, 0, sizeof(telnetDaemonBuffer));
                 telnetDaemonBytesReceived = recv(telnetDaemonSocketDescriptor, telnetDaemonBuffer, sizeof(telnetDaemonBuffer), 0);
-                DLog("\nDid receive from telnet daemon: %d.", telnetDaemonBytesReceived);
+                DLog("Did receive from telnet daemon: %d.", telnetDaemonBytesReceived);
                 
                 // Encode the data received from the telnet daemon into an application packet
                 // and send it to cproxy.
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
                     //DLog("Will send to local telnet session: %d.", telnetDaemonBytesReceived);
                     int sent = send(cproxySession, applicationDataPacket, sizeof(struct packet), 0);
                     telnetDaemonBytesReceived = 0;
-                    DLog("Did send to local telnet session: %d.", sent);
+                    DLog("Did send to local telnet session: %d.\n", sent);
                 }
 
                 // Free the application data packet from memory.
