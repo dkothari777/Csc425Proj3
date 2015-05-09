@@ -57,6 +57,10 @@ int main(int argc, char *argv[])
 
     struct packet * rbuffer = (struct packet*) malloc(sizeof(struct packet)); 
     struct packet * sbuffer = (struct packet*) malloc(sizeof(struct packet));
+	struct packet * heartbeat = (struct packet*) malloc(sizeof(struct packet));
+	memset(heartbeat->payload, 0, sizeof(heartbeat->payload));
+	heartbeat -> pLength = 0;
+	heartbeat -> type = PacketTypeHeartbeat;
     while (1) {
         // Block the thread until either the cproxy connection or the telnet daemon
         // connection, or both, have sent us data.
@@ -95,9 +99,19 @@ int main(int argc, char *argv[])
                 
                 // Forward the packet to the telnet daemon.
                 if (cproxyBytesReceived > 0) {
-                    int sent = send(telnetDaemonSocketDescriptor, rbuffer->payload, rbuffer->pLength, 0);
-                    cproxyBytesReceived = 0;
-                    DLog("Did send to telnet daemon: %d.\n", sent);
+					if(rbuffer->type == PacketTypeHeartbeat){
+						//TODO: send to cproxy
+						//packet memcopy to send buffer
+						memset(sendBuffer, 0, sizeof(sendBuffer));
+						memcpy(sendBuffer, heartbeat, sizeof(struct packet));
+						send(cproxySession, sendBuffer, sizeof(struct packet), 0);
+						DLog("Did send heartbeat to cproxy\n");
+					}
+					else{
+						int sent = send(telnetDaemonSocketDescriptor, rbuffer->payload, rbuffer->pLength, 0);
+						DLog("Did send to telnet daemon: %d.\n", sent);
+					}
+					cproxyBytesReceived = 0;
                 }
             }
 
