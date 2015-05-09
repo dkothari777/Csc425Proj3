@@ -4,9 +4,9 @@
 // CSC 425
 // Project 3
 
-#define PacketTypeHeartbeat = 0;
-#define PacketTypeNewConnection = 1;
-#define PacketTypeApplicationData = 2;
+#define PacketTypeHeartbeat 0
+#define PacketTypeNewConnection 1
+#define PacketTypeApplicationData 2
 
 struct packet {
     int type;
@@ -30,7 +30,7 @@ struct packet *makeApplicationDataPacket(char *payload, int payloadLength)
     packet->type = PacketTypeApplicationData;
     packet->payloadLength = payloadLength;
     memset(packet->payload, 0, sizeof(packet->payload));
-    mempy(packet->payload, payload, payloadLength);
+    memcpy(packet->payload, payload, payloadLength);
 
     return packet;
 }

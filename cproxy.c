@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
 	struct timeval timeout;
 
 	// Continuously check for telnet packets on this machine.
+    int sproxyBytesReceived;
 	int localTelnetBytesReceived;
 	char localTelnetBuffer[4096];
     int fdsToRead;
@@ -84,7 +85,7 @@ int main(int argc, char *argv[])
             
             DLog("Will send heartbeat to sproxy.");
             struct packet *heartbeatPacket = makeHeartbeatPacket();
-			int sent = send(sproxySocketDescriptor, heartbeatPacket, sizeof(struct packet));
+			int sent = send(sproxySocketDescriptor, heartbeatPacket, sizeof(struct packet), 0);
             DLog("Did send heartbeat to sproxy: %d.", sent);
 
             // Free the heartbeat packet from memory.

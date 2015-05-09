@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
 	struct timeval timeout;
 
     // Continuously check for telnet packets on this machine.
+    int cproxyBytesReceived;
     int telnetDaemonBytesReceived;
     char telnetDaemonBuffer[4096];
     int fdsToRead; 
@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
                     DLog("Heartbeat was received from cproxy.");
                     
                     DLog("Will send heartbeat to cproxy.");
-                    packet *heartbeatPacket = makeHeartbeatPacket();
+                    struct packet *heartbeatPacket = makeHeartbeatPacket();
                     int sent = send(cproxySession, heartbeatPacket, sizeof(struct packet), 0);
                     DLog("Did send heartbeat to cproxy: %d.", sent);
 
@@ -128,7 +129,7 @@ int main(int argc, char *argv[])
                 // Forward the packet to cproxy.
                 if (telnetDaemonBytesReceived > 0){
                     DLog("Will send to local telnet session: %d.", telnetDaemonBytesReceived);
-                    int sent = send(cproxySession, applicationDataPacket, sizeof(struct pacet), 0);
+                    int sent = send(cproxySession, applicationDataPacket, sizeof(struct packet), 0);
                     telnetDaemonBytesReceived = 0;
                     DLog("Did send to local telnet session: %d.\n", sent);
                 }
