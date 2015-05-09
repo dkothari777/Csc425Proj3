@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 		else {
             // Receive from cproxy.
             if (FD_ISSET(cproxySession, &readFileDescriptorSet)) {
-                struct packet *packet = malloc(sizeof(struct packet));
+                struct packet *packet =(struct packet) malloc(sizeof(struct packet));
 
                 //DLog("Will receive from cproxy.");
                 cproxyBytesReceived = recv(cproxySession, packet, sizeof(struct packet), 0);
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
                     telnetDaemonBytesReceived = 0;
                     DLog("Did send to local telnet session: %d.\n", sent);
                 }
-
+				memset(applicationDataPacket, 0, sizeof(struct packet));
                 // Free the application data packet from memory.
                 //free(applicationDataPacket);
             }	
