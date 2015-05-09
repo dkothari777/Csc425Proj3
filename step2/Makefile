@@ -16,7 +16,7 @@ sproxy: sproxy.c debug.h
 	gcc -o sproxy sproxy.c
 
 dsproxy: cproxy.c debug.h
-	gcc: -o sproxy sproxy.c -D DEBUG
+	gcc -o sproxy sproxy.c -D DEBUG
 
 clean:
 	rm -f *.o core cproxy sproxy
