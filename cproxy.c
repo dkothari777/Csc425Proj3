@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 				sproxyBytesReceived = recv(sproxySocketDescriptor, sproxyReadBuffer, sizeof(struct packet), 0);
                 DLog("Did receive from server telnet: %d.", sproxyBytesReceived);
                
-                struct *packet = packetFromBuffer(sproxyReadBuffer);
+                struct packet *packet = packetFromBuffer(sproxyReadBuffer);
  
                 // A heartbeat packet was received.
                 if (packet->type == PacketTypeHeartbeat) {
