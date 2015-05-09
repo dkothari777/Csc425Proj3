@@ -95,7 +95,6 @@ int main(int argc, char *argv[])
 		else {
 			// Receive from local telnet.
 			if (FD_ISSET(localTelnetSession, &readFileDescriptorSet)) {
-				DLog("Will receive from local telnet.");
                 memset(localTelnetBuffer, 0, sizeof(localTelnetBuffer));
 				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
 				DLog("Did receive from local telnet: %d\n", localTelnetBytesReceived);
@@ -111,7 +110,6 @@ int main(int argc, char *argv[])
                 
                 // Forward the packet to sproxy.
                 if (localTelnetBytesReceived > 0) {
-                    DLog("Will send to sproxy session: %d.", localTelnetBytesReceived);
 					int sent = send(sproxySocketDescriptor, sendBuffer, sizeof(struct packet), 0);
                     localTelnetBytesReceived = 0;
 					DLog("Did send to sproxy session: %d.", sent);
@@ -120,7 +118,6 @@ int main(int argc, char *argv[])
 
 			// Receive from sproxy.
 			if (FD_ISSET(sproxySocketDescriptor, &readFileDescriptorSet)) {
-				DLog("Will receive from server telnet.");
                 memset(sproxyBuffer, 0, sizeof(sproxyBuffer));
 				sproxyBytesReceived = recv(sproxySocketDescriptor, sproxyBuffer, sizeof(sproxyBuffer), 0);
 				DLog("Did receive from server telnet: %d.\n", sproxyBytesReceived);
@@ -131,7 +128,6 @@ int main(int argc, char *argv[])
 
 				// Forward the packet to the local telnet.
 				if (sproxyBytesReceived > 0){
-					DLog("Will send to local telnet: %d.", sproxyBytesReceived);
                     int sent = send(localTelnetSession, rbuffer->payload, rbuffer->pLength, 0);
                     sproxyBytesReceived = 0;
 					DLog("Did send to local telnet: %d.\n", sent);
