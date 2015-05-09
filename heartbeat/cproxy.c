@@ -86,13 +86,12 @@ int main(int argc, char *argv[])
 		else if (fdsToRead == 0) {
 			DLog("Timeout occurred!");
             
-            //DLog("Will send heartbeat to sproxy.");
-            //struct packet *heartbeatPacket = makeHeartbeatPacket();
-			//int sent = send(sproxySocketDescriptor, heartbeatPacket, sizeof(struct packet), 0);
-            //DLog("Did send heartbeat to sproxy: %d.\n", sent);
+            struct packet *heartbeatPacket = makeHeartbeatPacket();
+			int sent = send(sproxySocketDescriptor, heartbeatPacket, sizeof(struct packet), 0);
+            DLog("Did send heartbeat to sproxy: %d.\n", sent);
 
             // Free the heartbeat packet from memory.
-            // free(heartbeatPacket);
+            free(heartbeatPacket);
 		}
 
 		// Otherwise, there is data to be read from the sockets!
