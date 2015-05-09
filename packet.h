@@ -35,8 +35,6 @@ struct packet *makeApplicationDataPacket(char *payload, int payloadLength)
     //memcpy(packet->payload, payload, payloadLength);
     strncpy(packet->payload, payload, payloadLength);
 
-    DLog("%s", payload);
-
     return packet;
 }
 

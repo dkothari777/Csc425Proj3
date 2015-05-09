@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
             DLog("Did send heartbeat to sproxy: %d.", sent);
 
             // Free the heartbeat packet from memory.
-            free(heartbeatPacket);
+            // free(heartbeatPacket);
 		}
 
 		// Otherwise, there is data to be read from the sockets!
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
                     DLog("Will send to sproxy session: %lu.", sizeof(struct packet));
 					int sent = send(sproxySocketDescriptor, applicationDataPacket, sizeof(struct packet), 0);
                     localTelnetBytesReceived = 0;
-					DLog("Did send to sproxy session: %d.", sent);
+					DLog("Did send to sproxy session: %d.\n", sent);
                 }
 
                 // Free the application data packet from memory.
@@ -123,7 +123,6 @@ int main(int argc, char *argv[])
 
                 DLog("Will receive from server telnet.");
 				sproxyBytesReceived = recv(sproxySocketDescriptor, packet, sizeof(struct packet), 0);
-				DLog("Contents: %s", packet->payload);
                 DLog("Did receive from server telnet: %d.\n", sproxyBytesReceived);
                 
                 // A heartbeat packet was received.
@@ -144,7 +143,7 @@ int main(int argc, char *argv[])
                 }
 
                 // Free the packet from memory.
-                free(packet);
+                // free(packet);
             }
 		}
     }

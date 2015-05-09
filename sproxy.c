@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
                     DLog("Did send heartbeat to cproxy: %d.", sent);
 
                     // Free the heartbeat packet from memory.
-                    free(heartbeatPacket);
+                    //free(heartbeatPacket);
                 }
 
                 // An application data packet was received.
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
                 }
 
                 // Free the packet from memory.
-                free(packet);
+                //free(packet);
             }
 
             // Receive from telnet daemon.
@@ -135,6 +135,7 @@ int main(int argc, char *argv[])
                 }
 
                 // Free the application data packet from memory.
+                //free(applicationDataPacket);
             }	
 		}
 	}
