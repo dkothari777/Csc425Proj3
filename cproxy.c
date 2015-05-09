@@ -83,10 +83,10 @@ int main(int argc, char *argv[])
 		else if (fdsToRead == 0) {
 			DLog("Timeout occurred!\n");
             
-            DLog("Will send heartbeat to sproxy.");
+            //DLog("Will send heartbeat to sproxy.");
             struct packet *heartbeatPacket = makeHeartbeatPacket();
 			int sent = send(sproxySocketDescriptor, heartbeatPacket, sizeof(struct packet), 0);
-            DLog("Did send heartbeat to sproxy: %d.", sent);
+            DLog("Did send heartbeat to sproxy: %d.\n", sent);
 
             // Free the heartbeat packet from memory.
             // free(heartbeatPacket);
@@ -96,10 +96,10 @@ int main(int argc, char *argv[])
 		else {
 			// Receive from local telnet.
 			if (FD_ISSET(localTelnetSession, &readFileDescriptorSet)) {
-				DLog("Will receive from local telnet.");
+				//DLog("Will receive from local telnet.");
                 memset(localTelnetBuffer, 0, sizeof(localTelnetBuffer));
 				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
-                DLog("Did receive from local telnet: %d\n", localTelnetBytesReceived);
+                DLog("\nDid receive from local telnet: %d", localTelnetBytesReceived);
 				
                 // Encode the data received from local telnet into an application packet and send
                 // it to sproxy.
@@ -107,10 +107,10 @@ int main(int argc, char *argv[])
 
                 // Forward the packet to sproxy.
                 if (localTelnetBytesReceived > 0) {
-                    DLog("Will send to sproxy session: %lu.", sizeof(struct packet));
+                    //DLog("Will send to sproxy session: %lu.", sizeof(struct packet));
 					int sent = send(sproxySocketDescriptor, applicationDataPacket, sizeof(struct packet), 0);
                     localTelnetBytesReceived = 0;
-					DLog("Did send to sproxy session: %d.\n", sent);
+					DLog("Did send to sproxy session: %d.", sent);
                 }
 
                 // Free the application data packet from memory.
@@ -121,9 +121,9 @@ int main(int argc, char *argv[])
 			if (FD_ISSET(sproxySocketDescriptor, &readFileDescriptorSet)) {
 				struct packet *packet = malloc(sizeof(struct packet));
 
-                DLog("Will receive from server telnet.");
+                //DLog("Will receive from server telnet.");
 				sproxyBytesReceived = recv(sproxySocketDescriptor, packet, sizeof(struct packet), 0);
-                DLog("Did receive from server telnet: %d.\n", sproxyBytesReceived);
+                DLog("\nDid receive from server telnet: %d.", sproxyBytesReceived);
                 
                 // A heartbeat packet was received.
                 if (packet->type == PacketTypeHeartbeat) {
@@ -135,10 +135,10 @@ int main(int argc, char *argv[])
                 else if (packet->type == PacketTypeApplicationData) {
                     // Forward the application data packet to the local telnet.
                     if (sproxyBytesReceived > 0){
-                        DLog("Will send to local telnet: %d.", packet->payloadLength);
+                        //DLog("Will send to local telnet: %d.", packet->payloadLength);
                         int sent = send(localTelnetSession, packet->payload, packet->payloadLength, 0);
                         sproxyBytesReceived = 0;
-                        DLog("Did send to local telnet: %d.\n", sent);
+                        DLog("Did send to local telnet: %d.", sent);
                     }
                 }
 

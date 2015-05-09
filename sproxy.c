@@ -83,15 +83,15 @@ int main(int argc, char *argv[])
             if (FD_ISSET(cproxySession, &readFileDescriptorSet)) {
                 struct packet *packet = malloc(sizeof(packet));
 
-                DLog("Will receive from cproxy.");
+                //DLog("Will receive from cproxy.");
                 cproxyBytesReceived = recv(cproxySession, packet, sizeof(struct packet), 0);
-                DLog("Did receive from cproxy: %d\n", cproxyBytesReceived);
+                DLog("\nDid receive from cproxy: %d", cproxyBytesReceived);
                 
                 // A heartbeat packet was received.
                 if (packet->type == PacketTypeHeartbeat) {
                     DLog("Heartbeat was received from cproxy.");
                     
-                    DLog("Will send heartbeat to cproxy.");
+                    //DLog("Will send heartbeat to cproxy.");
                     struct packet *heartbeatPacket = makeHeartbeatPacket();
                     int sent = send(cproxySession, heartbeatPacket, sizeof(struct packet), 0);
                     DLog("Did send heartbeat to cproxy: %d.", sent);
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
                 else if (packet->type == PacketTypeApplicationData) {
                     // Forward the packet to the telnet daemon.
                     if (cproxyBytesReceived > 0) {
-                        DLog("Will send to telnet daemon: %d.", packet->payloadLength);
+                        //DLog("Will send to telnet daemon: %d.", packet->payloadLength);
                         int sent = send(telnetDaemonSocketDescriptor, packet->payload, packet->payloadLength, 0);
                         cproxyBytesReceived = 0;
                         DLog("Did send to telnet daemon: %d.\n", sent);
@@ -117,10 +117,10 @@ int main(int argc, char *argv[])
 
             // Receive from telnet daemon.
             if (FD_ISSET(telnetDaemonSocketDescriptor, &readFileDescriptorSet)) {
-                DLog("Will receive from telnet daemon.");
+                //DLog("Will receive from telnet daemon.");
                 memset(telnetDaemonBuffer, 0, sizeof(telnetDaemonBuffer));
                 telnetDaemonBytesReceived = recv(telnetDaemonSocketDescriptor, telnetDaemonBuffer, sizeof(telnetDaemonBuffer), 0);
-                DLog("Did receive from telnet daemon: %d.\n", telnetDaemonBytesReceived);
+                DLog("\nDid receive from telnet daemon: %d.", telnetDaemonBytesReceived);
                 
                 // Encode the data received from the telnet daemon into an application packet
                 // and send it to cproxy.
@@ -128,10 +128,10 @@ int main(int argc, char *argv[])
 
                 // Forward the packet to cproxy.
                 if (telnetDaemonBytesReceived > 0){
-                    DLog("Will send to local telnet session: %d.", telnetDaemonBytesReceived);
+                    //DLog("Will send to local telnet session: %d.", telnetDaemonBytesReceived);
                     int sent = send(cproxySession, applicationDataPacket, sizeof(struct packet), 0);
                     telnetDaemonBytesReceived = 0;
-                    DLog("Did send to local telnet session: %d.\n", sent);
+                    DLog("Did send to local telnet session: %d.", sent);
                 }
 
                 // Free the application data packet from memory.
