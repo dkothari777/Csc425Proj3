@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
                 //DLog("Will receive from telnet daemon.");
                 memset(telnetDaemonBuffer, 0, sizeof(telnetDaemonBuffer));
                 telnetDaemonBytesReceived = recv(telnetDaemonSocketDescriptor, telnetDaemonBuffer, sizeof(telnetDaemonBuffer), 0);
-                DLog("Did receive from telnet daemon: %d.", telnetDaemonBytesReceived);
+                DLog("Did receive from telnet daemon (%d): %s.", telnetDaemonBytesReceived, telnetDaemonBuffer);
                 
                 // Encode the data received from the telnet daemon into an application packet
                 // and send it to cproxy.
