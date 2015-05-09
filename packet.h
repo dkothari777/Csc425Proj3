@@ -18,7 +18,7 @@ struct packet {
 
 struct packet *makeHeartbeatPacket()
 {
-    struct packet *packet = malloc(sizeof(packet));
+    struct packet *packet = malloc(sizeof(struct packet));
     packet->type = PacketTypeHeartbeat;
     packet->payloadLength = 0;
     //memset(packet->payload, 0, sizeof(packet->payload));
@@ -28,7 +28,7 @@ struct packet *makeHeartbeatPacket()
 
 struct packet *makeApplicationDataPacket(char *payload, int payloadLength)
 {
-    struct packet *packet = malloc(sizeof(packet));
+    struct packet *packet = malloc(sizeof(struct packet));
     packet->type = PacketTypeApplicationData;
     packet->payloadLength = payloadLength;
     //memset(packet->payload, 0, sizeof(packet->payload));
