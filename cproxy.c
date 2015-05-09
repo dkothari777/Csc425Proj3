@@ -107,14 +107,14 @@ int main(int argc, char *argv[])
 
                 // Forward the packet to sproxy.
                 if (localTelnetBytesReceived > 0) {
-                    DLog("Will send to sproxy session: %d.", sizeof(struct packet));
+                    DLog("Will send to sproxy session: %lu.", sizeof(struct packet));
 					int sent = send(sproxySocketDescriptor, applicationDataPacket, sizeof(struct packet), 0);
                     localTelnetBytesReceived = 0;
 					DLog("Did send to sproxy session: %d.", sent);
                 }
 
                 // Free the application data packet from memory.
-                free(applicationDataPacket);
+                //free(applicationDataPacket);
 			}
 
 			// Receive from sproxy.

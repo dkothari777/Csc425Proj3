@@ -30,7 +30,8 @@ struct packet *makeApplicationDataPacket(char *payload, int payloadLength)
     packet->type = PacketTypeApplicationData;
     packet->payloadLength = payloadLength;
     memset(packet->payload, 0, sizeof(packet->payload));
-    memcpy(packet->payload, payload, payloadLength);
+    //memcpy(packet->payload, payload, payloadLength);
+    strncpy(packet->payload, payload, payloadLength);
 
     return packet;
 }
