@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include "debug.h"
+#include "packet.h"
 
 struct sockaddr_in CproxyAddress;
 struct sockaddr_in TelnetDaemonAddress;
@@ -47,9 +48,7 @@ int main(int argc, char *argv[])
 	struct timeval timeout;
 
     // Continuously check for telnet packets on this machine.
-    int cproxyBytesReceived;
     int telnetDaemonBytesReceived;
-    char cproxyBuffer[4096];
     char telnetDaemonBuffer[4096];
     int fdsToRead; 
 
@@ -81,18 +80,38 @@ int main(int argc, char *argv[])
 		else {
             // Receive from cproxy.
             if (FD_ISSET(cproxySession, &readFileDescriptorSet)) {
+                struct packet *packet = malloc(sizeof(packet));
+
                 DLog("Will receive from cproxy.");
-                memset(cproxyBuffer, 0, sizeof(cproxyBuffer));
-                cproxyBytesReceived = recv(cproxySession, cproxyBuffer, sizeof(cproxyBuffer), 0);
+                cproxyBytesReceived = recv(cproxySession, packet, sizeof(struct packet), 0);
                 DLog("Did receive from cproxy: %d\n", cproxyBytesReceived);
                 
-                // Forward the packet to the telnet daemon.
-                if (cproxyBytesReceived > 0) {
-                    DLog("Will send to telnet daemon: %d.", cproxyBytesReceived);
-                    int sent = send(telnetDaemonSocketDescriptor, cproxyBuffer, cproxyBytesReceived, 0);
-                    cproxyBytesReceived = 0;
-                    DLog("Did send to telnet daemon: %d.\n", sent);
+                // A heartbeat packet was received.
+                if (packet->type == PacketTypeHeartbeat) {
+                    DLog("Heartbeat was received from cproxy.");
+                    
+                    DLog("Will send heartbeat to cproxy.");
+                    packet *heartbeatPacket = makeHeartbeatPacket();
+                    int sent = send(cproxySession, heartbeatPacket, sizeof(struct packet), 0);
+                    DLog("Did send heartbeat to cproxy: %d.", sent);
+
+                    // Free the heartbeat packet from memory.
+                    free(heartbeatPacket);
                 }
+
+                // An application data packet was received.
+                else if (packet->type == PacketTypeApplicationData) {
+                    // Forward the packet to the telnet daemon.
+                    if (cproxyBytesReceived > 0) {
+                        DLog("Will send to telnet daemon: %d.", packet->payloadLength);
+                        int sent = send(telnetDaemonSocketDescriptor, packet->payload, packet->payloadLength, 0);
+                        cproxyBytesReceived = 0;
+                        DLog("Did send to telnet daemon: %d.\n", sent);
+                    }
+                }
+
+                // Free the packet from memory.
+                free(packet);
             }
 
             // Receive from telnet daemon.
@@ -102,13 +121,19 @@ int main(int argc, char *argv[])
                 telnetDaemonBytesReceived = recv(telnetDaemonSocketDescriptor, telnetDaemonBuffer, sizeof(telnetDaemonBuffer), 0);
                 DLog("Did receive from telnet daemon: %d.\n", telnetDaemonBytesReceived);
                 
+                // Encode the data received from the telnet daemon into an application packet
+                // and send it to cproxy.
+                struct packet *applicationDataPacket = makeApplicationDataPacket(telnetDaemonBuffer, telnetDaemonBytesReceived);
+
                 // Forward the packet to cproxy.
                 if (telnetDaemonBytesReceived > 0){
                     DLog("Will send to local telnet session: %d.", telnetDaemonBytesReceived);
-                    int sent = send(cproxySession, telnetDaemonBuffer, telnetDaemonBytesReceived, 0);
+                    int sent = send(cproxySession, applicationDataPacket, sizeof(struct pacet), 0);
                     telnetDaemonBytesReceived = 0;
                     DLog("Did send to local telnet session: %d.\n", sent);
                 }
+
+                // Free the application data packet from memory.
             }	
 		}
 	}

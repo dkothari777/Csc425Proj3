@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include "debug.h"
+#include "packet.h"
 
 struct sockaddr_in LocalTelnetAddress;
 struct sockaddr_in SproxyAddress;
@@ -56,9 +57,7 @@ int main(int argc, char *argv[])
 
 	// Continuously check for telnet packets on this machine.
 	int localTelnetBytesReceived;
-	int sproxyBytesReceived;
 	char localTelnetBuffer[4096];
-	char sproxyBuffer[4096];
     int fdsToRead;
 
 	while (1) {
@@ -82,7 +81,14 @@ int main(int argc, char *argv[])
 		// Check if a timeout occured.
 		else if (fdsToRead == 0) {
 			DLog("Timeout occurred!\n");
-			// TODO: Implement heartbeat functionality.
+            
+            DLog("Will send heartbeat to sproxy.");
+            struct packet *heartbeatPacket = makeHeartbeatPacket();
+			int sent = send(sproxySocketDescriptor, heartbeatPacket, sizeof(struct packet));
+            DLog("Did send heartbeat to sproxy: %d.", sent);
+
+            // Free the heartbeat packet from memory.
+            free(heartbeatPacket);
 		}
 
 		// Otherwise, there is data to be read from the sockets!
@@ -92,31 +98,51 @@ int main(int argc, char *argv[])
 				DLog("Will receive from local telnet.");
                 memset(localTelnetBuffer, 0, sizeof(localTelnetBuffer));
 				localTelnetBytesReceived = recv(localTelnetSession, localTelnetBuffer, sizeof(localTelnetBuffer), 0);
-				DLog("Did receive from local telnet: %d\n", localTelnetBytesReceived);
+                DLog("Did receive from local telnet: %d\n", localTelnetBytesReceived);
 				
+                // Encode the data received from local telnet into an application packet and send
+                // it to sproxy.
+                struct packet *applicationDataPacket = makeApplicationDataPacket(localTelnetBuffer, localTelnetBytesReceived);
+
                 // Forward the packet to sproxy.
                 if (localTelnetBytesReceived > 0) {
-                    DLog("Will send to sproxy session: %d.", localTelnetBytesReceived);
-					int sent = send(sproxySocketDescriptor, localTelnetBuffer, localTelnetBytesReceived, 0);
+                    DLog("Will send to sproxy session: %d.", sizeof(struct packet));
+					int sent = send(sproxySocketDescriptor, applicationDataPacket, sizeof(struct packet), 0);
                     localTelnetBytesReceived = 0;
 					DLog("Did send to sproxy session: %d.", sent);
                 }
+
+                // Free the application data packet from memory.
+                free(applicationDataPacket);
 			}
 
 			// Receive from sproxy.
 			if (FD_ISSET(sproxySocketDescriptor, &readFileDescriptorSet)) {
-				DLog("Will receive from server telnet.");
-                memset(sproxyBuffer, 0, sizeof(sproxyBuffer));
-				sproxyBytesReceived = recv(sproxySocketDescriptor, sproxyBuffer, sizeof(sproxyBuffer), 0);
+				struct packet *packet = malloc(sizeof(struct packet));
+
+                DLog("Will receive from server telnet.");
+				sproxyBytesReceived = recv(sproxySocketDescriptor, packet, sizeof(struct packet), 0);
 				DLog("Did receive from server telnet: %d.\n", sproxyBytesReceived);
                 
-				// Forward the packet to the local telnet.
-				if (sproxyBytesReceived > 0){
-					DLog("Will send to local telnet: %d.", sproxyBytesReceived);
-                    int sent = send(localTelnetSession, sproxyBuffer, sproxyBytesReceived, 0);
-                    sproxyBytesReceived = 0;
-					DLog("Did send to local telnet: %d.\n", sent);
+                // A heartbeat packet was received.
+                if (packet->type == PacketTypeHeartbeat) {
+                    DLog("Heartbeat response was received from sproxy.");
+                    // TODO: Clear hearbeat counter from x to 0.
                 }
+
+                // An application data packet was received.
+                else if (packet->type == PacketTypeApplicationData) {
+                    // Forward the application data packet to the local telnet.
+                    if (sproxyBytesReceived > 0){
+                        DLog("Will send to local telnet: %d.", packet->payloadLength);
+                        int sent = send(localTelnetSession, packet->payload, packet->payloadLength, 0);
+                        sproxyBytesReceived = 0;
+                        DLog("Did send to local telnet: %d.\n", sent);
+                    }
+                }
+
+                // Free the packet from memory.
+                free(packet);
             }
 		}
     }
