@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include "debug.h"
@@ -58,8 +59,10 @@ int main(int argc, char *argv[])
 	// Continuously check for telnet packets on this machine.
     int sproxyBytesReceived;
 	int localTelnetBytesReceived;
-	char localTelnetBuffer[4096];
+	char localTelnetBuffer[1024];
     int fdsToRead;
+    char sproxySendBuffer[2048];
+    char sproxyReadBuffer[2048];
 
 	while (1) {
 		// Block the thread until either the local telnet connection or the server telnet
@@ -108,7 +111,9 @@ int main(int argc, char *argv[])
                 // Forward the packet to sproxy.
                 if (localTelnetBytesReceived > 0) {
                     //DLog("Will send to sproxy session: %lu.", sizeof(struct packet));
-					int sent = send(sproxySocketDescriptor, applicationDataPacket, sizeof(struct packet), 0);
+                	memset(sproxySendBuffer, 0, sizeof(struct packet));
+                    memcpy(sproxySendBuffer, applicationDataPacket, sizeof(struct packet));
+                    int sent = send(sproxySocketDescriptor, sproxySendBuffer, sizeof(struct packet), 0);
                     localTelnetBytesReceived = 0;
 					DLog("Did send to sproxy session: %d.\n", sent);
                 }
@@ -119,12 +124,12 @@ int main(int argc, char *argv[])
 
 			// Receive from sproxy.
 			if (FD_ISSET(sproxySocketDescriptor, &readFileDescriptorSet)) {
-				struct packet *packet = malloc(sizeof(struct packet));
-
-                //DLog("Will receive from server telnet.");
-				sproxyBytesReceived = recv(sproxySocketDescriptor, packet, sizeof(struct packet), 0);
+                memset(sproxyReadBuffer, 0, sizeof(struct packet)); 
+				sproxyBytesReceived = recv(sproxySocketDescriptor, sproxyReadBuffer, sizeof(struct packet), 0);
                 DLog("Did receive from server telnet: %d.", sproxyBytesReceived);
-                
+               
+                struct *packet = packetFromBuffer(sproxyReadBuffer);
+ 
                 // A heartbeat packet was received.
                 if (packet->type == PacketTypeHeartbeat) {
                     DLog("Heartbeat response was received from sproxy.\n");

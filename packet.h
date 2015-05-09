@@ -13,12 +13,12 @@
 struct packet {
     int type;
     int payloadLength;
-    char payload[4096];
+    char payload[1024];
 };
 
 struct packet *makeHeartbeatPacket()
 {
-    struct packet *packet = malloc(sizeof(struct packet));
+    struct packet *packet = (struct packet *) malloc(sizeof(struct packet));
     packet->type = PacketTypeHeartbeat;
     packet->payloadLength = 0;
     //memset(packet->payload, 0, sizeof(packet->payload));
@@ -26,7 +26,7 @@ struct packet *makeHeartbeatPacket()
     return packet;
 }
 
-struct packet *makeApplicationDataPacket(char payload[4096], int payloadLength)
+struct packet *makeApplicationDataPacket(char payload[1024], int payloadLength)
 {
     struct packet *packet = (struct packet *) malloc(sizeof(struct packet));
     packet->type = PacketTypeApplicationData;
@@ -38,6 +38,14 @@ struct packet *makeApplicationDataPacket(char payload[4096], int payloadLength)
     //strcpy(packet->payload, payload);
 	//strcat(packet->payload, "\0");
     //packet->payloadLength = strlen(packet->payload);
+
+    return packet;
+}
+
+struct packet *packetFromBuffer(char buffer[2048])
+{
+    struct packet *packet = (struct packet *) malloc(sizeof(struct packet));
+    memcpy(packet, buffer, sizeof(struct packet));
 
     return packet;
 }
