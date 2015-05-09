@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include "debug.h"
 #include "packet.h"
+#include <arpa/inet.h>
 
 struct sockaddr_in CproxyAddress;
 struct sockaddr_in TelnetDaemonAddress;
@@ -84,7 +85,7 @@ int main(int argc, char *argv[])
 		else {
             // Receive from cproxy.
             if (FD_ISSET(cproxySession, &readFileDescriptorSet)) {
-                struct packet *packet =(struct packet) malloc(sizeof(struct packet));
+                struct packet *packet =(struct packet*) malloc(sizeof(struct packet));
 
                 //DLog("Will receive from cproxy.");
                 cproxyBytesReceived = recv(cproxySession, packet, sizeof(struct packet), 0);

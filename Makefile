@@ -7,10 +7,10 @@
 all: cproxy sproxy
 
 cproxy: cproxy.c debug.h packet.h
-	gcc -o cproxy cproxy.c -D DEBUG
+	gcc -Wall -g -std=c99 -o cproxy cproxy.c -D DEBUG
 
 sproxy: sproxy.c debug.h packet.h
-	gcc -o sproxy sproxy.c -D DEBUG
+	gcc -Wall -g -std=c99 -o sproxy sproxy.c -D DEBUG
 
 clean:
 	rm -f *.o core cproxy sproxy
